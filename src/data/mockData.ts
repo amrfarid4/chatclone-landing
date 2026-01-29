@@ -9,7 +9,7 @@ export const suggestedPrompts: SuggestedPrompt[] = [
   },
   {
     id: "2",
-    title: "What's our best selling dish?",
+    title: "Show me top selling items?",
     description: "Get menu insights",
     icon: "🍽️",
   },
