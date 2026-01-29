@@ -1,7 +1,7 @@
 // API Configuration
 // Update this URL when deploying to production
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || "https://slimy-eels-drop.loca.lt";
+export const API_BASE_URL = import.meta.env.VITE_API_URL || "https://web-production-ab3bc.up.railway.app";
 
 export interface ConversationMessage {
   role: "user" | "assistant";
