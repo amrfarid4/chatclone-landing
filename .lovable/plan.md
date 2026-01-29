@@ -1,125 +1,107 @@
 
 
-# ChatGPT-Style Chat Interface Redesign
+# Connect Chat Interface to Backend API
 
-A complete overhaul to match the ChatGPT interface exactly, with dyne branding (teal accent) and restaurant-focused prompts.
-
----
-
-## Major Changes Overview
-
-| Current | New (ChatGPT-style) |
-|---------|---------------------|
-| Sidebar with conversation history | No sidebar - clean single column |
-| Coral/terracotta accent color | Teal accent for dyne branding |
-| User bubble: colored | User bubble: gray (#f4f4f4) |
-| AI bubble: muted background | AI bubble: white with subtle border |
-| No loading state | "Analyzing your data..." with pulsing dots |
-| Generic prompts | Restaurant-focused prompts |
+Connect the Dyne Copilot frontend to your FastAPI backend running at `localhost:8000`.
 
 ---
 
-## Design Specifications
+## Overview
 
-### Color Palette (Teal Dyne Branding)
+| Current State | After Changes |
+|---------------|---------------|
+| Mock AI responses (hardcoded text) | Real API calls to `/ask` endpoint |
+| No error handling | Graceful error messages |
+| No conversation history sent | Full conversation context included |
 
-| Token | Light Mode | Dark Mode |
-|-------|------------|-----------|
-| Primary (teal) | 173 80% 40% | 173 75% 45% |
-| User bubble | Gray #f4f4f4 | Gray #2f2f2f |
-| AI bubble | White with border | Dark with border |
-| Background | Pure white | Near black |
+---
 
-### Layout Structure
+## Changes Required
 
-```text
-+------------------------------------------+
-|                                          |
-|                                          |
-|     "What can I help you with?"          |
-|                                          |
-|    [Prompt 1]  [Prompt 2]  [Prompt 3]    |
-|    [Prompt 4]  [Prompt 5]  [Prompt 6]    |
-|                                          |
-|                                          |
-|  +------------------------------------+  |
-|  | Message input...              [->] |  |
-|  +------------------------------------+  |
-|                                          |
-+------------------------------------------+
+### 1. Update ChatInterface.tsx
+
+Replace the mock response logic with real API calls:
+
+- Send POST request to `http://localhost:8000/ask`
+- Include question, branch_id, and conversation history
+- Parse the `answer` field from response
+- Add error handling with user-friendly message
+
+### 2. Create API Configuration
+
+Add a config file for the API base URL:
+- Default to `localhost:8000` for development
+- Easy to update when deploying to production
+
+---
+
+## API Integration Details
+
+**Endpoint:** `POST /ask`
+
+**Request body:**
+```json
+{
+  "question": "Why is GMV down this week?",
+  "branch_id": "all",
+  "conversation_history": [
+    { "role": "user", "content": "..." },
+    { "role": "assistant", "content": "..." }
+  ]
+}
 ```
 
-### Restaurant Prompts (6 cards)
-
-1. "Why is GMV down this week?" - Analyze your sales performance
-2. "What's our best selling dish?" - Get menu insights
-3. "Show peak hours" - Understand busy times
-4. "Compare locations" - Multi-store analytics
-5. "Customer feedback summary" - Review analysis
-6. "Forecast tomorrow's orders" - Demand prediction
-
----
-
-## Message Bubble Styling
-
-### User Messages (right-aligned)
-
-- Background: Gray (#f4f4f4 light / #374151 dark)
-- Border radius: 24px
-- No avatar icon
-- Max width: 70%
-
-### AI Messages (left-aligned)
-
-- Background: White with 1px gray border
-- Border radius: 24px
-- Dyne logo/icon (teal circle)
-- Max width: 85%
-
-### Loading Indicator
-
-- Text: "Analyzing your data..."
-- Animation: Three pulsing dots
-- Same positioning as AI message
+**Response:**
+```json
+{
+  "answer": "## Yesterday's GMV...",
+  "evidence": { ... },
+  "timestamp": "2026-01-29T23:44:50"
+}
+```
 
 ---
 
-## Technical Details
+## Error Handling
 
-### Files to Modify
-
-1. **src/index.css** - Update color tokens to teal palette
-2. **src/data/mockData.ts** - Replace prompts with restaurant analytics
-3. **src/components/chat/ChatInterface.tsx** - Remove sidebar, add loading state
-4. **src/components/chat/MessageBubble.tsx** - Update bubble styles (gray/white+border)
-5. **src/components/chat/WelcomeScreen.tsx** - Update heading, simplify layout
-6. **src/components/chat/ChatInput.tsx** - Match ChatGPT input styling
-7. **tailwind.config.ts** - Add new animation for loading dots
-
-### New Component
-
-- **LoadingIndicator.tsx** - Pulsing dots with "Analyzing your data..." text
-
-### Loading State Flow
-
-1. User sends message -> user message appears immediately
-2. `isLoading` state set to true
-3. Loading indicator shows (1.5-2 second delay simulated)
-4. AI response appears with fade-in animation
-5. Auto-scroll to show full response
-
-### Animation Specifications
-
-- Message fade-in: 200ms ease-out
-- Loading dots: 1.4s infinite pulse (staggered by 0.2s each)
-- Smooth scroll: CSS `scroll-behavior: smooth`
+| Scenario | User Sees |
+|----------|-----------|
+| Network error | "Sorry, I couldn't connect to the server. Please check your connection." |
+| API error (500) | "Sorry, I encountered an error. Please try again." |
+| Empty response | "I couldn't generate a response. Please try rephrasing." |
 
 ---
 
-## Responsive Behavior
+## Files to Modify
 
-- Mobile: Full-width messages, larger touch targets
-- Tablet/Desktop: Centered content (max-width: 768px)
-- Input always fixed at bottom
-- No hamburger menu (no sidebar to toggle)
+1. **src/lib/api.ts** (new) - API configuration and helper functions
+2. **src/components/chat/ChatInterface.tsx** - Replace mock logic with API calls
+
+---
+
+## Important Notes
+
+**Localhost Limitation:**
+- Lovable's preview runs in a sandboxed iframe
+- It cannot directly call `localhost:8000` on your machine
+- For testing, you'll need to either:
+  - Use **ngrok** to expose your local API (`ngrok http 8000`)
+  - Deploy the backend to Railway/Render first
+
+**CORS:**
+Your backend already has CORS configured for `*.lovable.app` and `*.lovable.dev`, so once deployed, it should work seamlessly.
+
+---
+
+## Technical Implementation
+
+The `handleSendMessage` function will:
+
+1. Create user message and add to state immediately
+2. Set loading state to true
+3. Call the API with fetch()
+4. Parse JSON response and extract `answer` field
+5. Create assistant message with the answer
+6. Handle errors gracefully
+7. Reset loading state
 
