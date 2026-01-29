@@ -5,6 +5,7 @@ import { ChatMessages } from "./ChatMessages";
 import { ChatInput } from "./ChatInput";
 import { WelcomeScreen } from "./WelcomeScreen";
 import { LoadingIndicator } from "./LoadingIndicator";
+import { askQuestion } from "@/lib/api";
 
 export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -12,45 +13,59 @@ export function ChatInterface() {
 
   const handleSendMessage = useCallback(
     async (content: string) => {
+      if (!content.trim()) return;
+
       const userMessage: Message = {
         id: `msg-${Date.now()}`,
         role: "user",
-        content,
+        content: content.trim(),
         timestamp: new Date(),
       };
 
       // Add user message immediately
-      setMessages((prev) => [...prev, userMessage]);
+      const updatedMessages = [...messages, userMessage];
+      setMessages(updatedMessages);
       setIsLoading(true);
 
-      // Simulate AI thinking delay (1.5-2s)
-      await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 500));
+      try {
+        // Call the backend API
+        const response = await askQuestion({
+          question: content.trim(),
+          branch_id: "all",
+          conversation_history: messages.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+        });
 
-      // Simulate AI response
-      const aiMessage: Message = {
-        id: `msg-${Date.now() + 1}`,
-        role: "assistant",
-        content: `Based on your query about "${content}", here's my analysis:
+        // Add AI response
+        const aiMessage: Message = {
+          id: `msg-${Date.now() + 1}`,
+          role: "assistant",
+          content: response.answer || "I couldn't generate a response. Please try rephrasing.",
+          timestamp: new Date(),
+        };
 
-**Key Insights:**
-1. Your data shows interesting patterns that we should explore further
-2. There are several factors contributing to the current trends
-3. I've identified some actionable recommendations
+        setMessages([...updatedMessages, aiMessage]);
+      } catch (error) {
+        console.error("Error calling API:", error);
 
-### Recommendations
+        // Show user-friendly error message
+        const errorMessage: Message = {
+          id: `msg-${Date.now() + 1}`,
+          role: "assistant",
+          content: error instanceof TypeError 
+            ? "Sorry, I couldn't connect to the server. Please check your connection."
+            : "Sorry, I encountered an error. Please try again.",
+          timestamp: new Date(),
+        };
 
-- **Short-term:** Focus on optimizing your current top performers
-- **Medium-term:** Consider expanding into adjacent opportunities
-- **Long-term:** Build sustainable growth patterns
-
-Would you like me to dive deeper into any of these areas?`,
-        timestamp: new Date(),
-      };
-
-      setIsLoading(false);
-      setMessages((prev) => [...prev, aiMessage]);
+        setMessages([...updatedMessages, errorMessage]);
+      } finally {
+        setIsLoading(false);
+      }
     },
-    []
+    [messages]
   );
 
   const handleSelectPrompt = useCallback(
