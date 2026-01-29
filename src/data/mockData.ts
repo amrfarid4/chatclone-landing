@@ -3,7 +3,7 @@ import { Conversation, Message, SuggestedPrompt } from "@/types/chat";
 export const suggestedPrompts: SuggestedPrompt[] = [
   {
     id: "1",
-    title: "Why is GMV down this week?",
+    title: "Show me the revenue performance this week",
     description: "Analyze your sales performance",
     icon: "📉",
   },
@@ -27,9 +27,9 @@ export const suggestedPrompts: SuggestedPrompt[] = [
   },
   {
     id: "5",
-    title: "Customer feedback summary",
-    description: "Review analysis",
-    icon: "💬",
+    title: "What's the Payments approval rate?",
+    description: "Payment insights",
+    icon: "💳",
   },
   {
     id: "6",
