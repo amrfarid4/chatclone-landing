@@ -8,103 +8,85 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Modern warm neutral palette */
-    --background: 40 20% 99%;
-    --foreground: 220 20% 10%;
+    /* Clean white background like ChatGPT */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 13%;
 
-    --card: 40 15% 98%;
-    --card-foreground: 220 20% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 13%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 10%;
+    --popover-foreground: 0 0% 13%;
 
-    /* Warm coral/terracotta accent */
-    --primary: 16 85% 55%;
+    /* Teal accent for dyne branding */
+    --primary: 173 80% 40%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 40 15% 94%;
-    --secondary-foreground: 220 20% 10%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 13%;
 
-    --muted: 40 10% 94%;
-    --muted-foreground: 220 10% 45%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 40 20% 92%;
-    --accent-foreground: 220 20% 10%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 13%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 40 15% 88%;
-    --input: 40 15% 88%;
-    --ring: 16 85% 55%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 173 80% 40%;
 
-    --radius: 0.75rem;
+    --radius: 1.5rem;
 
-    /* Sidebar tokens - warm stone */
-    --sidebar-background: 40 10% 96%;
-    --sidebar-foreground: 220 15% 25%;
-    --sidebar-primary: 16 85% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 40 15% 92%;
-    --sidebar-accent-foreground: 220 20% 10%;
-    --sidebar-border: 40 10% 88%;
-    --sidebar-ring: 16 85% 55%;
-
-    /* Chat-specific tokens */
-    --chat-user-bubble: 16 85% 55%;
-    --chat-user-foreground: 0 0% 100%;
-    --chat-ai-bubble: 40 15% 96%;
-    --chat-ai-foreground: 220 20% 10%;
-    --chat-code-bg: 220 15% 12%;
-    --chat-code-foreground: 40 20% 95%;
+    /* Chat-specific tokens - ChatGPT style */
+    --chat-user-bubble: 0 0% 96%;
+    --chat-user-foreground: 0 0% 13%;
+    --chat-ai-bubble: 0 0% 100%;
+    --chat-ai-foreground: 0 0% 13%;
+    --chat-ai-border: 0 0% 90%;
+    --chat-code-bg: 0 0% 13%;
+    --chat-code-foreground: 0 0% 96%;
   }
 
   .dark {
-    --background: 220 20% 8%;
-    --foreground: 40 20% 95%;
+    --background: 0 0% 8%;
+    --foreground: 0 0% 96%;
 
-    --card: 220 18% 10%;
-    --card-foreground: 40 20% 95%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 96%;
 
-    --popover: 220 18% 10%;
-    --popover-foreground: 40 20% 95%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 96%;
 
-    --primary: 16 80% 58%;
+    --primary: 173 75% 45%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 15% 15%;
-    --secondary-foreground: 40 20% 95%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 96%;
 
-    --muted: 220 15% 18%;
-    --muted-foreground: 40 10% 55%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 55%;
 
-    --accent: 220 15% 15%;
-    --accent-foreground: 40 20% 95%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 96%;
 
     --destructive: 0 62% 35%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 18%;
-    --input: 220 15% 18%;
-    --ring: 16 80% 58%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 173 75% 45%;
 
-    /* Sidebar dark */
-    --sidebar-background: 220 18% 10%;
-    --sidebar-foreground: 40 15% 85%;
-    --sidebar-primary: 16 80% 58%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 15% 15%;
-    --sidebar-accent-foreground: 40 20% 95%;
-    --sidebar-border: 220 15% 18%;
-    --sidebar-ring: 16 80% 58%;
-
-    /* Chat dark */
-    --chat-user-bubble: 16 80% 58%;
-    --chat-user-foreground: 0 0% 100%;
-    --chat-ai-bubble: 220 15% 15%;
-    --chat-ai-foreground: 40 20% 95%;
-    --chat-code-bg: 220 20% 6%;
-    --chat-code-foreground: 40 20% 95%;
+    /* Chat dark - ChatGPT style */
+    --chat-user-bubble: 0 0% 20%;
+    --chat-user-foreground: 0 0% 96%;
+    --chat-ai-bubble: 0 0% 12%;
+    --chat-ai-foreground: 0 0% 96%;
+    --chat-ai-border: 0 0% 20%;
+    --chat-code-bg: 0 0% 6%;
+    --chat-code-foreground: 0 0% 96%;
   }
 }
 

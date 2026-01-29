@@ -62,6 +62,7 @@ export default {
           "user-foreground": "hsl(var(--chat-user-foreground))",
           "ai-bubble": "hsl(var(--chat-ai-bubble))",
           "ai-foreground": "hsl(var(--chat-ai-foreground))",
+          "ai-border": "hsl(var(--chat-ai-border))",
           "code-bg": "hsl(var(--chat-code-bg))",
           "code-foreground": "hsl(var(--chat-code-foreground))",
         },
@@ -96,6 +97,10 @@ export default {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.6" },
         },
+        "loading-dot": {
+          "0%, 80%, 100%": { opacity: "0.3", transform: "scale(0.8)" },
+          "40%": { opacity: "1", transform: "scale(1)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -104,6 +109,7 @@ export default {
         "fade-in-up": "fade-in-up 0.4s ease-out forwards",
         "slide-in-left": "slide-in-left 0.3s ease-out",
         "pulse-soft": "pulse-soft 2s ease-in-out infinite",
+        "loading-dot": "loading-dot 1.4s ease-in-out infinite",
       },
     },
   },
