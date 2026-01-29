@@ -9,42 +9,36 @@ interface WelcomeScreenProps {
 export function WelcomeScreen({ prompts, onSelectPrompt }: WelcomeScreenProps) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-4 py-8">
-      <div className="max-w-2xl text-center animate-fade-in-up">
-        {/* Logo/Icon */}
-        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-          <span className="text-3xl">✨</span>
+      <div className="w-full max-w-2xl space-y-8">
+        {/* Centered heading - ChatGPT style */}
+        <div className="text-center">
+          <h1 className="text-3xl font-semibold text-foreground md:text-4xl">
+            What can I help you with?
+          </h1>
         </div>
 
-        {/* Greeting */}
-        <h1 className="mb-2 text-3xl font-semibold tracking-tight text-foreground">
-          How can I help you today?
-        </h1>
-        <p className="mb-8 text-muted-foreground">
-          Choose a suggestion below or type your own message to get started.
-        </p>
-
-        {/* Suggested Prompts Grid */}
+        {/* Prompt cards - 2x3 grid on desktop, stack on mobile */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {prompts.map((prompt, index) => (
             <button
               key={prompt.id}
               onClick={() => onSelectPrompt(prompt.title)}
               className={cn(
-                "group rounded-xl border border-border bg-card p-4 text-left transition-all duration-200",
-                "hover:border-primary/30 hover:bg-accent hover:shadow-md",
-                "focus:outline-none focus:ring-2 focus:ring-primary/20"
+                "group flex flex-col items-start gap-1 rounded-2xl border border-border bg-card p-4",
+                "text-left transition-all duration-200",
+                "hover:border-primary/30 hover:bg-accent hover:shadow-sm",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "animate-fade-in"
               )}
-              style={{
-                animationDelay: `${index * 50}ms`,
-              }}
+              style={{ animationDelay: `${index * 50}ms` }}
             >
-              <div className="mb-2 text-2xl">{prompt.icon}</div>
-              <h3 className="mb-1 font-medium text-foreground group-hover:text-primary transition-colors">
+              <span className="text-xl mb-1">{prompt.icon}</span>
+              <span className="font-medium text-sm text-foreground">
                 {prompt.title}
-              </h3>
-              <p className="text-sm text-muted-foreground line-clamp-2">
+              </span>
+              <span className="text-xs text-muted-foreground">
                 {prompt.description}
-              </p>
+              </span>
             </button>
           ))}
         </div>

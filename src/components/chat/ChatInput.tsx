@@ -1,5 +1,5 @@
 import { useState, useRef, KeyboardEvent } from "react";
-import { Send } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,7 @@ interface ChatInputProps {
 export function ChatInput({
   onSend,
   disabled = false,
-  placeholder = "Message AI...",
+  placeholder = "Message dyne...",
 }: ChatInputProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -49,7 +49,7 @@ export function ChatInput({
 
   return (
     <div className="relative">
-      <div className="flex items-end gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm transition-shadow focus-within:shadow-md focus-within:border-primary/30">
+      <div className="flex items-end gap-2 rounded-3xl border border-border bg-card p-2 shadow-sm transition-all focus-within:shadow-md focus-within:border-primary/40">
         <Textarea
           ref={textareaRef}
           value={value}
@@ -59,7 +59,7 @@ export function ChatInput({
           disabled={disabled}
           rows={1}
           className={cn(
-            "min-h-[44px] max-h-[200px] flex-1 resize-none border-0 bg-transparent px-2 py-2",
+            "min-h-[44px] max-h-[200px] flex-1 resize-none border-0 bg-transparent px-3 py-2",
             "focus-visible:ring-0 focus-visible:ring-offset-0",
             "placeholder:text-muted-foreground/60",
             "scrollbar-thin"
@@ -70,17 +70,17 @@ export function ChatInput({
           disabled={!hasContent || disabled}
           size="icon"
           className={cn(
-            "h-10 w-10 shrink-0 rounded-xl transition-all",
+            "h-9 w-9 shrink-0 rounded-full transition-all",
             hasContent
               ? "bg-primary text-primary-foreground hover:bg-primary/90"
-              : "bg-muted text-muted-foreground"
+              : "bg-muted text-muted-foreground cursor-not-allowed"
           )}
         >
-          <Send className="h-4 w-4" />
+          <ArrowUp className="h-4 w-4" />
         </Button>
       </div>
       <p className="mt-2 text-center text-xs text-muted-foreground">
-        Press Enter to send, Shift + Enter for new line
+        dyne can make mistakes. Check important info.
       </p>
     </div>
   );
