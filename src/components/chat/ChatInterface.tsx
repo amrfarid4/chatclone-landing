@@ -1,15 +1,22 @@
 import { useState, useCallback } from "react";
+import { Plus } from "lucide-react";
 import { Message } from "@/types/chat";
 import { suggestedPrompts } from "@/data/mockData";
 import { ChatMessages } from "./ChatMessages";
 import { ChatInput } from "./ChatInput";
 import { WelcomeScreen } from "./WelcomeScreen";
-import { LoadingIndicator } from "./LoadingIndicator";
+import { SuggestionChips } from "./SuggestionChips";
 import { askQuestion } from "@/lib/api";
+import { Button } from "@/components/ui/button";
 
 export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleNewChat = useCallback(() => {
+    setMessages([]);
+    setIsLoading(false);
+  }, []);
 
   const handleSendMessage = useCallback(
     async (content: string) => {
@@ -79,6 +86,22 @@ export function ChatInterface() {
 
   return (
     <div className="flex h-screen w-full flex-col bg-background">
+      {/* Header with New Chat button - only show when in conversation */}
+      {hasMessages && (
+        <div className="flex items-center justify-between border-b border-border bg-background px-4 py-3">
+          <div className="text-sm font-medium text-foreground">dyne</div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleNewChat}
+            className="gap-1.5"
+          >
+            <Plus className="h-4 w-4" />
+            New Chat
+          </Button>
+        </div>
+      )}
+
       {/* Chat Content */}
       {hasMessages ? (
         <ChatMessages messages={messages} isLoading={isLoading} />
@@ -88,7 +111,15 @@ export function ChatInterface() {
 
       {/* Input Area - Fixed at bottom */}
       <div className="border-t border-border bg-background p-4">
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto max-w-3xl space-y-3">
+          {/* Suggestion chips when in conversation */}
+          {hasMessages && (
+            <SuggestionChips 
+              prompts={suggestedPrompts} 
+              onSelectPrompt={handleSelectPrompt}
+              disabled={isLoading}
+            />
+          )}
           <ChatInput onSend={handleSendMessage} disabled={isLoading} />
         </div>
       </div>
