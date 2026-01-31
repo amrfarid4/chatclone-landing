@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { Message } from "@/types/chat";
 import { suggestedPrompts } from "@/data/mockData";
@@ -6,12 +6,33 @@ import { ChatMessages } from "./ChatMessages";
 import { ChatInput } from "./ChatInput";
 import { WelcomeScreen } from "./WelcomeScreen";
 import { SuggestionChips } from "./SuggestionChips";
-import { askQuestion } from "@/lib/api";
+import { askQuestion, getBranches, type BranchInfo } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [branches, setBranches] = useState<BranchInfo[]>([]);
+  const [selectedBranch, setSelectedBranch] = useState("all");
+
+  useEffect(() => {
+    getBranches()
+      .then(setBranches)
+      .catch(() => {
+        setBranches([
+          { branch_id: "all", branch_name: "All Branches (Compare)" },
+          { branch_id: "Willow's", branch_name: "Willow's" },
+          { branch_id: "Willow's D5", branch_name: "Willow's D5" },
+        ]);
+      });
+  }, []);
 
   const handleNewChat = useCallback(() => {
     setMessages([]);
@@ -29,27 +50,22 @@ export function ChatInterface() {
         timestamp: new Date(),
       };
 
-      // Add user message immediately
       const updatedMessages = [...messages, userMessage];
       setMessages(updatedMessages);
       setIsLoading(true);
 
       try {
-        // Call the backend API
-        const response = await askQuestion({
-          question: content.trim(),
-          branch_id: "all",
-          conversation_history: messages.map((msg) => ({
-            role: msg.role,
-            content: msg.content,
-          })),
-        });
+        const history = messages.map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+        }));
 
-        // Add AI response
+        const data = await askQuestion(content.trim(), selectedBranch, history);
+
         const aiMessage: Message = {
           id: `msg-${Date.now() + 1}`,
           role: "assistant",
-          content: response.answer || "I couldn't generate a response. Please try rephrasing.",
+          content: data.answer,
           timestamp: new Date(),
         };
 
@@ -57,13 +73,13 @@ export function ChatInterface() {
       } catch (error) {
         console.error("Error calling API:", error);
 
-        // Show user-friendly error message
         const errorMessage: Message = {
           id: `msg-${Date.now() + 1}`,
           role: "assistant",
-          content: error instanceof TypeError 
-            ? "Sorry, I couldn't connect to the server. Please check your connection."
-            : "Sorry, I encountered an error. Please try again.",
+          content:
+            error instanceof TypeError
+              ? "Sorry, I couldn't connect to the server. Please check your connection."
+              : "Sorry, I'm having trouble connecting right now. Please try again in a moment.",
           timestamp: new Date(),
         };
 
@@ -72,7 +88,7 @@ export function ChatInterface() {
         setIsLoading(false);
       }
     },
-    [messages]
+    [messages, selectedBranch]
   );
 
   const handleSelectPrompt = useCallback(
@@ -86,10 +102,26 @@ export function ChatInterface() {
 
   return (
     <div className="flex h-screen w-full flex-col bg-background">
-      {/* Header with New Chat button - only show when in conversation */}
-      {hasMessages && (
-        <div className="flex items-center justify-between border-b border-border bg-background px-4 py-3">
+      {/* Header with Branch Selector and New Chat button */}
+      <div className="flex items-center justify-between border-b border-border bg-background px-4 py-3">
+        <div className="flex items-center gap-4">
           <div className="text-sm font-medium text-foreground">dyne</div>
+          {branches.length > 0 && (
+            <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select branch" />
+              </SelectTrigger>
+              <SelectContent>
+                {branches.map((b) => (
+                  <SelectItem key={b.branch_id} value={b.branch_id}>
+                    {b.branch_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+        {hasMessages && (
           <Button
             variant="outline"
             size="sm"
@@ -99,8 +131,8 @@ export function ChatInterface() {
             <Plus className="h-4 w-4" />
             New Chat
           </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Chat Content */}
       {hasMessages ? (
@@ -112,10 +144,9 @@ export function ChatInterface() {
       {/* Input Area - Fixed at bottom */}
       <div className="border-t border-border bg-background p-4">
         <div className="mx-auto max-w-3xl space-y-3">
-          {/* Suggestion chips when in conversation */}
           {hasMessages && (
-            <SuggestionChips 
-              prompts={suggestedPrompts} 
+            <SuggestionChips
+              prompts={suggestedPrompts}
               onSelectPrompt={handleSelectPrompt}
               disabled={isLoading}
             />
