@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import dyneLogo from "@/assets/dyne-logo.png";
 
 export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -105,7 +106,7 @@ export function ChatInterface() {
       {/* Header with Branch Selector and New Chat button */}
       <div className="flex items-center justify-between border-b border-border bg-background px-4 py-3">
         <div className="flex items-center gap-4">
-          <div className="text-sm font-medium text-foreground">dyne</div>
+          <img src={dyneLogo} alt="dyne" className="h-6 w-auto" />
           {branches.length > 0 && (
             <Select value={selectedBranch} onValueChange={setSelectedBranch}>
               <SelectTrigger className="w-[200px]">
