@@ -124,3 +124,49 @@ export async function checkHealth(): Promise<{
   }
   return response.json();
 }
+
+// --- Report endpoints ---
+
+export interface DailyBriefResponse {
+  brief: string;
+  data: Record<string, unknown>;
+  timestamp: string;
+}
+
+export interface WeeklyScorecardResponse {
+  scorecard: string;
+  data: Record<string, unknown>;
+  timestamp: string;
+}
+
+export interface CustomerIntelligenceResponse {
+  overview: Record<string, unknown>;
+  tiers: Record<string, unknown>;
+  vip_customers: Record<string, unknown>[];
+  at_risk_customers: Record<string, unknown>[];
+  timestamp: string;
+}
+
+export async function getDailyBrief(): Promise<DailyBriefResponse> {
+  const response = await fetch(`${API_URL}/daily-brief`);
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function getWeeklyScorecard(): Promise<WeeklyScorecardResponse> {
+  const response = await fetch(`${API_URL}/weekly-scorecard?include_text=true`);
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function getCustomerIntelligence(): Promise<CustomerIntelligenceResponse> {
+  const response = await fetch(`${API_URL}/customer-intelligence`);
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return response.json();
+}

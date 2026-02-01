@@ -4,6 +4,9 @@ import { Check, Copy, ArrowRight, Zap, ThumbsUp, ThumbsDown } from "lucide-react
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { submitCampaignAction } from "@/lib/api";
+import { DailyBriefCard } from "./reports/DailyBriefCard";
+import { WeeklyScorecardCard } from "./reports/WeeklyScorecardCard";
+import { CustomerIntelCard } from "./reports/CustomerIntelCard";
 
 interface MessageBubbleProps {
   message: Message;
@@ -41,8 +44,20 @@ export function MessageBubble({ message, isLatest, onSuggestedQuestion, showSugg
             D
           </div>
 
-          <div className="rounded-3xl border border-chat-ai-border bg-chat-ai-bubble px-4 py-3 text-chat-ai-foreground">
-            <MessageContent content={message.content} isUser={isUser} />
+          <div className="flex flex-col">
+            <div className="rounded-3xl border border-chat-ai-border bg-chat-ai-bubble px-4 py-3 text-chat-ai-foreground">
+              <MessageContent content={message.content} isUser={isUser} />
+            </div>
+            {/* Report Cards */}
+            {message.reportType === "daily-brief" && message.reportData && (
+              <DailyBriefCard data={message.reportData} />
+            )}
+            {message.reportType === "weekly-scorecard" && message.reportData && (
+              <WeeklyScorecardCard data={message.reportData} />
+            )}
+            {message.reportType === "customer-intelligence" && message.reportData && (
+              <CustomerIntelCard data={message.reportData} />
+            )}
           </div>
         </div>
       )}

@@ -27,15 +27,15 @@ export const suggestedPrompts: SuggestedPrompt[] = [
   },
   {
     id: "5",
-    title: "Why is GMV down today?",
-    description: "Driver attribution analysis",
-    icon: "📉",
+    title: "Weekly Scorecard",
+    description: "KPI deltas, top movers, peak hours",
+    icon: "📋",
   },
   {
     id: "6",
-    title: "What's my payment approval rate?",
-    description: "Payment health check",
-    icon: "💳",
+    title: "Customer Intelligence",
+    description: "VIP customers, at-risk alerts, tier breakdown",
+    icon: "👥",
   },
 ];
 

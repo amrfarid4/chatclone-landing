@@ -12,6 +12,8 @@ export interface ActionCampaign {
   status: string;
 }
 
+export type ReportType = "daily-brief" | "weekly-scorecard" | "customer-intelligence";
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
@@ -19,6 +21,8 @@ export interface Message {
   timestamp: Date;
   suggestedQuestions?: string[];
   actionCampaigns?: ActionCampaign[];
+  reportType?: ReportType;
+  reportData?: Record<string, unknown>;
 }
 
 export interface Conversation {

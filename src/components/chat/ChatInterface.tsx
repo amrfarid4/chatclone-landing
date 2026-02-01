@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Plus } from "lucide-react";
 import { Message } from "@/types/chat";
 import { suggestedPrompts } from "@/data/mockData";
@@ -6,7 +6,15 @@ import { ChatMessages } from "./ChatMessages";
 import { ChatInput } from "./ChatInput";
 import { WelcomeScreen } from "./WelcomeScreen";
 import { SuggestionChips } from "./SuggestionChips";
-import { askQuestion, getBranches, type BranchInfo } from "@/lib/api";
+import { BriefLoadingScreen } from "./reports/BriefLoadingScreen";
+import {
+  askQuestion,
+  getBranches,
+  getDailyBrief,
+  getWeeklyScorecard,
+  getCustomerIntelligence,
+  type BranchInfo,
+} from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -17,12 +25,29 @@ import {
 } from "@/components/ui/select";
 import dyneLogo from "@/assets/dyne-logo.png";
 
+// Patterns that trigger report endpoints instead of /ask
+const REPORT_TRIGGERS: { pattern: RegExp; type: "daily-brief" | "weekly-scorecard" | "customer-intelligence" }[] = [
+  { pattern: /\b(daily\s*brief|morning\s*brief|today'?s?\s*(numbers|brief|report))\b/i, type: "daily-brief" },
+  { pattern: /\b(weekly\s*scorecard|week\s*report|weekly\s*report|scorecard)\b/i, type: "weekly-scorecard" },
+  { pattern: /\b(customer\s*intel|customer\s*intelligence|vip\s*customers?|at[\s-]?risk|tier\s*breakdown|customer\s*segments?)\b/i, type: "customer-intelligence" },
+];
+
+function detectReportTrigger(text: string) {
+  for (const t of REPORT_TRIGGERS) {
+    if (t.pattern.test(text)) return t.type;
+  }
+  return null;
+}
+
 export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [briefLoading, setBriefLoading] = useState(true);
   const [branches, setBranches] = useState<BranchInfo[]>([]);
   const [selectedBranch, setSelectedBranch] = useState("all");
+  const briefLoaded = useRef(false);
 
+  // Load branches
   useEffect(() => {
     getBranches()
       .then(setBranches)
@@ -35,9 +60,39 @@ export function ChatInterface() {
       });
   }, []);
 
+  // Auto-load daily brief on mount
+  useEffect(() => {
+    if (briefLoaded.current) return;
+    briefLoaded.current = true;
+
+    getDailyBrief()
+      .then((res) => {
+        const briefMessage: Message = {
+          id: `msg-brief-${Date.now()}`,
+          role: "assistant",
+          content: res.brief,
+          timestamp: new Date(),
+          reportType: "daily-brief",
+          reportData: res.data,
+          suggestedQuestions: [
+            "Show weekly scorecard",
+            "Customer intelligence report",
+            "Why is revenue down?",
+          ],
+        };
+        setMessages([briefMessage]);
+        setBriefLoading(false);
+      })
+      .catch(() => {
+        // Silently fall back to WelcomeScreen
+        setBriefLoading(false);
+      });
+  }, []);
+
   const handleNewChat = useCallback(() => {
     setMessages([]);
     setIsLoading(false);
+    setBriefLoading(false);
   }, []);
 
   const handleSendMessage = useCallback(
@@ -56,23 +111,68 @@ export function ChatInterface() {
       setIsLoading(true);
 
       try {
-        const history = messages.map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-        }));
+        const reportType = detectReportTrigger(content.trim());
 
-        const data = await askQuestion(content.trim(), selectedBranch, history);
+        if (reportType) {
+          // Call dedicated report endpoint
+          let aiMessage: Message;
 
-        const aiMessage: Message = {
-          id: `msg-${Date.now() + 1}`,
-          role: "assistant",
-          content: data.answer,
-          timestamp: new Date(),
-          suggestedQuestions: data.suggested_questions,
-          actionCampaigns: data.action_campaigns,
-        };
+          if (reportType === "daily-brief") {
+            const res = await getDailyBrief();
+            aiMessage = {
+              id: `msg-${Date.now() + 1}`,
+              role: "assistant",
+              content: res.brief,
+              timestamp: new Date(),
+              reportType: "daily-brief",
+              reportData: res.data,
+              suggestedQuestions: ["Show weekly scorecard", "Customer intelligence report", "Why is revenue down?"],
+            };
+          } else if (reportType === "weekly-scorecard") {
+            const res = await getWeeklyScorecard();
+            aiMessage = {
+              id: `msg-${Date.now() + 1}`,
+              role: "assistant",
+              content: res.scorecard,
+              timestamp: new Date(),
+              reportType: "weekly-scorecard",
+              reportData: res.data,
+              suggestedQuestions: ["Customer intelligence report", "Show daily brief", "Why did orders drop?"],
+            };
+          } else {
+            const res = await getCustomerIntelligence();
+            aiMessage = {
+              id: `msg-${Date.now() + 1}`,
+              role: "assistant",
+              content: res.overview?.summary as string || "Here's your customer intelligence report.",
+              timestamp: new Date(),
+              reportType: "customer-intelligence",
+              reportData: res as unknown as Record<string, unknown>,
+              suggestedQuestions: ["Show weekly scorecard", "Show daily brief", "How do I retain at-risk customers?"],
+            };
+          }
 
-        setMessages([...updatedMessages, aiMessage]);
+          setMessages([...updatedMessages, aiMessage]);
+        } else {
+          // Regular /ask call
+          const history = messages.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+          }));
+
+          const data = await askQuestion(content.trim(), selectedBranch, history);
+
+          const aiMessage: Message = {
+            id: `msg-${Date.now() + 1}`,
+            role: "assistant",
+            content: data.answer,
+            timestamp: new Date(),
+            suggestedQuestions: data.suggested_questions,
+            actionCampaigns: data.action_campaigns,
+          };
+
+          setMessages([...updatedMessages, aiMessage]);
+        }
       } catch (error) {
         console.error("Error calling API:", error);
 
@@ -138,7 +238,9 @@ export function ChatInterface() {
       </div>
 
       {/* Chat Content */}
-      {hasMessages ? (
+      {briefLoading ? (
+        <BriefLoadingScreen />
+      ) : hasMessages ? (
         <ChatMessages messages={messages} isLoading={isLoading} onSuggestedQuestion={handleSendMessage} />
       ) : (
         <WelcomeScreen prompts={suggestedPrompts} onSelectPrompt={handleSelectPrompt} />
