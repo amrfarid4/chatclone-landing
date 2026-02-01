@@ -7,9 +7,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 interface ChatMessagesProps {
   messages: Message[];
   isLoading?: boolean;
+  onSuggestedQuestion?: (question: string) => void;
 }
 
-export function ChatMessages({ messages, isLoading = false }: ChatMessagesProps) {
+export function ChatMessages({ messages, isLoading = false, onSuggestedQuestion }: ChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -24,6 +25,8 @@ export function ChatMessages({ messages, isLoading = false }: ChatMessagesProps)
             key={message.id}
             message={message}
             isLatest={index === messages.length - 1}
+            onSuggestedQuestion={onSuggestedQuestion}
+            showSuggestions={index === messages.length - 1 && !isLoading}
           />
         ))}
         {isLoading && <LoadingIndicator />}

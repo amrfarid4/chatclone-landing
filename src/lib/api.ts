@@ -8,7 +8,9 @@ export interface ConversationMessage {
 
 export interface AskResponse {
   answer: string;
+  suggested_questions?: string[];
   evidence?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
   timestamp: string;
   processing_time_ms?: number;
 }

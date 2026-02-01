@@ -68,6 +68,7 @@ export function ChatInterface() {
           role: "assistant",
           content: data.answer,
           timestamp: new Date(),
+          suggestedQuestions: data.suggested_questions,
         };
 
         setMessages([...updatedMessages, aiMessage]);
@@ -137,7 +138,7 @@ export function ChatInterface() {
 
       {/* Chat Content */}
       {hasMessages ? (
-        <ChatMessages messages={messages} isLoading={isLoading} />
+        <ChatMessages messages={messages} isLoading={isLoading} onSuggestedQuestion={handleSendMessage} />
       ) : (
         <WelcomeScreen prompts={suggestedPrompts} onSelectPrompt={handleSelectPrompt} />
       )}
