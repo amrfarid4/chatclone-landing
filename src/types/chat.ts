@@ -1,9 +1,24 @@
+export interface ActionCampaign {
+  campaign_id: string;
+  trigger_type: string;
+  title: string;
+  description: string;
+  discount_pct?: number;
+  duration_days: number;
+  target_hours?: string;
+  estimated_impact_orders?: number;
+  estimated_impact_revenue?: number;
+  confidence: string;
+  status: string;
+}
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
   suggestedQuestions?: string[];
+  actionCampaigns?: ActionCampaign[];
 }
 
 export interface Conversation {

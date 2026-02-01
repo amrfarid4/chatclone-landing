@@ -6,9 +6,24 @@ export interface ConversationMessage {
   content: string;
 }
 
+export interface CampaignAction {
+  campaign_id: string;
+  trigger_type: string;
+  title: string;
+  description: string;
+  discount_pct?: number;
+  duration_days: number;
+  target_hours?: string;
+  estimated_impact_orders?: number;
+  estimated_impact_revenue?: number;
+  confidence: string;
+  status: string;
+}
+
 export interface AskResponse {
   answer: string;
   suggested_questions?: string[];
+  action_campaigns?: CampaignAction[];
   evidence?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
   timestamp: string;

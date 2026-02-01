@@ -1,8 +1,9 @@
-import { Message } from "@/types/chat";
+import { Message, ActionCampaign } from "@/types/chat";
 import { cn } from "@/lib/utils";
-import { Check, Copy, ArrowRight } from "lucide-react";
+import { Check, Copy, ArrowRight, Zap, ThumbsUp, ThumbsDown } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { submitCampaignAction } from "@/lib/api";
 
 interface MessageBubbleProps {
   message: Message;
@@ -14,7 +15,9 @@ interface MessageBubbleProps {
 export function MessageBubble({ message, isLatest, onSuggestedQuestion, showSuggestions }: MessageBubbleProps) {
   const isUser = message.role === "user";
   const suggestions = message.suggestedQuestions;
+  const campaigns = message.actionCampaigns;
   const hasSuggestions = showSuggestions && !isUser && suggestions && suggestions.length > 0;
+  const hasCampaigns = showSuggestions && !isUser && campaigns && campaigns.length > 0;
 
   return (
     <div
@@ -44,9 +47,18 @@ export function MessageBubble({ message, isLatest, onSuggestedQuestion, showSugg
         </div>
       )}
 
+      {/* Action Campaign Cards */}
+      {hasCampaigns && (
+        <div className="mt-3 ml-11 flex flex-col gap-2 animate-fade-in max-w-[75%]">
+          {campaigns.map((campaign) => (
+            <CampaignCard key={campaign.campaign_id} campaign={campaign} />
+          ))}
+        </div>
+      )}
+
       {/* Suggested follow-up questions */}
       {hasSuggestions && (
-        <div className="mt-3 ml-11 flex flex-wrap gap-2 animate-fade-in">
+        <div className={cn("mt-3 ml-11 flex flex-wrap gap-2 animate-fade-in", hasCampaigns && "mt-2")}>
           {suggestions.map((question, idx) => (
             <button
               key={idx}
@@ -57,6 +69,83 @@ export function MessageBubble({ message, isLatest, onSuggestedQuestion, showSugg
               <span className="text-left">{question}</span>
             </button>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CampaignCard({ campaign }: { campaign: ActionCampaign }) {
+  const [status, setStatus] = useState<"idle" | "approved" | "rejected">("idle");
+  const [loading, setLoading] = useState(false);
+
+  const handleAction = async (action: "approved" | "rejected") => {
+    setLoading(true);
+    try {
+      await submitCampaignAction(campaign.campaign_id, action);
+      setStatus(action);
+    } catch {
+      setStatus(action); // Still show status even if API fails
+    }
+    setLoading(false);
+  };
+
+  const typeLabel = {
+    bundle: "Bundle",
+    discount: "Discount",
+    promotion: "Promotion",
+    slow_period: "Off-Peak Boost",
+    menu_change: "Menu Change",
+    pricing: "Pricing",
+    retention: "Retention",
+  }[campaign.trigger_type] || "Campaign";
+
+  return (
+    <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
+      <div className="flex items-center gap-2">
+        <Zap className="h-4 w-4 text-primary" />
+        <span className="text-xs font-medium text-primary">{typeLabel}</span>
+        {campaign.confidence === "high" && (
+          <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">High confidence</span>
+        )}
+      </div>
+      <p className="text-xs text-foreground/80 leading-relaxed">{campaign.description}</p>
+      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+        {campaign.duration_days && <span>{campaign.duration_days} days</span>}
+        {campaign.discount_pct && <span>{campaign.discount_pct}% off</span>}
+        {campaign.estimated_impact_revenue && (
+          <span>+{campaign.estimated_impact_revenue.toLocaleString()} EGP (projected)</span>
+        )}
+      </div>
+      {status === "idle" ? (
+        <div className="flex gap-2 pt-1">
+          <Button
+            size="sm"
+            variant="default"
+            className="h-7 text-xs gap-1"
+            onClick={() => handleAction("approved")}
+            disabled={loading}
+          >
+            <ThumbsUp className="h-3 w-3" />
+            Approve
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs gap-1"
+            onClick={() => handleAction("rejected")}
+            disabled={loading}
+          >
+            <ThumbsDown className="h-3 w-3" />
+            Skip
+          </Button>
+        </div>
+      ) : (
+        <div className={cn(
+          "text-xs font-medium pt-1",
+          status === "approved" ? "text-green-600" : "text-muted-foreground"
+        )}>
+          {status === "approved" ? "Approved — queued for execution" : "Skipped"}
         </div>
       )}
     </div>

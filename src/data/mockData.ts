@@ -3,39 +3,39 @@ import { Conversation, Message, SuggestedPrompt } from "@/types/chat";
 export const suggestedPrompts: SuggestedPrompt[] = [
   {
     id: "1",
-    title: "Show me the revenue performance this week",
-    description: "Analyze your sales performance",
-    icon: "📉",
-  },
-  {
-    id: "2",
-    title: "Show me top selling items?",
-    description: "Get menu insights",
-    icon: "🍽️",
-  },
-  {
-    id: "3",
-    title: "Show peak hours",
-    description: "Understand busy times",
-    icon: "⏰",
-  },
-  {
-    id: "4",
-    title: "Compare locations",
-    description: "Multi-store analytics",
+    title: "Which branch had higher GMV last week?",
+    description: "Compare branch performance",
     icon: "📊",
   },
   {
+    id: "2",
+    title: "Top beef items this month",
+    description: "Smart menu analytics with AI bundles",
+    icon: "🥩",
+  },
+  {
+    id: "3",
+    title: "Predict my revenue for next month",
+    description: "AI-powered revenue forecast",
+    icon: "🔮",
+  },
+  {
+    id: "4",
+    title: "Show me top 10 coffee items sold this month",
+    description: "Smart keyword menu search",
+    icon: "☕",
+  },
+  {
     id: "5",
-    title: "What's the Payments approval rate?",
-    description: "Payment insights",
-    icon: "💳",
+    title: "Why is GMV down today?",
+    description: "Driver attribution analysis",
+    icon: "📉",
   },
   {
     id: "6",
-    title: "Forecast tomorrow's orders",
-    description: "Demand prediction",
-    icon: "🔮",
+    title: "What's my payment approval rate?",
+    description: "Payment health check",
+    icon: "💳",
   },
 ];
 

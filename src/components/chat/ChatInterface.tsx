@@ -69,6 +69,7 @@ export function ChatInterface() {
           content: data.answer,
           timestamp: new Date(),
           suggestedQuestions: data.suggested_questions,
+          actionCampaigns: data.action_campaigns,
         };
 
         setMessages([...updatedMessages, aiMessage]);
