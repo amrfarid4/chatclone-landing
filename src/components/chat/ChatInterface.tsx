@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { Message } from "@/types/chat";
 import { suggestedPrompts } from "@/data/mockData";
@@ -6,7 +6,6 @@ import { ChatMessages } from "./ChatMessages";
 import { ChatInput } from "./ChatInput";
 import { WelcomeScreen } from "./WelcomeScreen";
 import { SuggestionChips } from "./SuggestionChips";
-import { BriefLoadingScreen } from "./reports/BriefLoadingScreen";
 import {
   askQuestion,
   getBranches,
@@ -27,7 +26,7 @@ import dyneLogo from "@/assets/dyne-logo.png";
 
 // Patterns that trigger report endpoints instead of /ask
 const REPORT_TRIGGERS: { pattern: RegExp; type: "daily-brief" | "weekly-scorecard" | "customer-intelligence" }[] = [
-  { pattern: /\b(daily\s*brief|morning\s*brief|today'?s?\s*(numbers|brief|report))\b/i, type: "daily-brief" },
+  { pattern: /\b(daily\s*brief|morning\s*brief|today'?s?\s*(numbers|brief|report)|what\s*happened\s*yesterday)\b/i, type: "daily-brief" },
   { pattern: /\b(weekly\s*scorecard|week\s*report|weekly\s*report|scorecard)\b/i, type: "weekly-scorecard" },
   { pattern: /\b(customer\s*intel|customer\s*intelligence|vip\s*customers?|at[\s-]?risk|tier\s*breakdown|customer\s*segments?)\b/i, type: "customer-intelligence" },
 ];
@@ -42,11 +41,8 @@ function detectReportTrigger(text: string) {
 export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [briefLoading, setBriefLoading] = useState(true);
-  const [briefFadingOut, setBriefFadingOut] = useState(false);
   const [branches, setBranches] = useState<BranchInfo[]>([]);
   const [selectedBranch, setSelectedBranch] = useState("all");
-  const briefLoaded = useRef(false);
 
   // Load branches
   useEffect(() => {
@@ -61,42 +57,9 @@ export function ChatInterface() {
       });
   }, []);
 
-  // Auto-load daily brief on mount
-  useEffect(() => {
-    if (briefLoaded.current) return;
-    briefLoaded.current = true;
-
-    getDailyBrief()
-      .then((res) => {
-        const briefMessage: Message = {
-          id: `msg-brief-${Date.now()}`,
-          role: "assistant",
-          content: res.brief,
-          timestamp: new Date(),
-          reportType: "daily-brief",
-          reportData: res.data,
-          suggestedQuestions: [
-            "Show weekly scorecard",
-            "Customer intelligence report",
-            "Why is revenue down?",
-          ],
-        };
-        setMessages([briefMessage]);
-        // Fade out loading screen, then reveal content
-        setBriefFadingOut(true);
-        setTimeout(() => setBriefLoading(false), 350);
-      })
-      .catch(() => {
-        // Silently fall back to WelcomeScreen
-        setBriefFadingOut(true);
-        setTimeout(() => setBriefLoading(false), 350);
-      });
-  }, []);
-
   const handleNewChat = useCallback(() => {
     setMessages([]);
     setIsLoading(false);
-    setBriefLoading(false);
   }, []);
 
   const handleSendMessage = useCallback(
@@ -242,12 +205,10 @@ export function ChatInterface() {
       </div>
 
       {/* Chat Content */}
-      {briefLoading ? (
-        <BriefLoadingScreen fadeOut={briefFadingOut} />
-      ) : hasMessages ? (
+      {hasMessages ? (
         <ChatMessages messages={messages} isLoading={isLoading} onSuggestedQuestion={handleSendMessage} />
       ) : (
-        <WelcomeScreen prompts={suggestedPrompts} onSelectPrompt={handleSelectPrompt} />
+        <WelcomeScreen onSelectPrompt={handleSelectPrompt} />
       )}
 
       {/* Input Area - Fixed at bottom */}
