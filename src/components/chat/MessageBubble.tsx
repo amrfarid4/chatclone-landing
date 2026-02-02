@@ -187,69 +187,146 @@ function MessageContent({ content, isUser }: { content: string; isUser: boolean 
   );
 }
 
+function MarkdownTable({ rows }: { rows: string[] }) {
+  // Parse header, separator, and body rows
+  const parseRow = (row: string) =>
+    row.split("|").slice(1, -1).map((cell) => cell.trim());
+
+  const header = parseRow(rows[0]);
+  // rows[1] is the separator (| --- | --- |), skip it
+  const body = rows.slice(2).map(parseRow);
+
+  return (
+    <div className="my-3 overflow-x-auto rounded-lg border border-gray-200">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="bg-gray-50 border-b border-gray-200">
+            {header.map((cell, i) => (
+              <th
+                key={i}
+                className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap"
+              >
+                <FormattedText text={cell} />
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {body.map((row, ri) => (
+            <tr
+              key={ri}
+              className={ri % 2 === 0 ? "bg-white" : "bg-gray-50/50"}
+            >
+              {row.map((cell, ci) => (
+                <td
+                  key={ci}
+                  className="px-3 py-1.5 text-gray-600 whitespace-nowrap"
+                >
+                  <FormattedText text={cell} />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function TextContent({ content }: { content: string }) {
   if (!content.trim()) return null;
 
-  // Simple markdown parsing
+  // Group lines into blocks: tables vs everything else
   const lines = content.split("\n");
+  const blocks: { type: "text" | "table"; lines: string[] }[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    // Detect table: line starts with |, next line is separator (| --- |)
+    if (
+      lines[i].trim().startsWith("|") &&
+      i + 1 < lines.length &&
+      lines[i + 1].trim().match(/^\|[\s-:|]+\|$/)
+    ) {
+      const tableLines: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+      blocks.push({ type: "table", lines: tableLines });
+    } else {
+      // Collect non-table lines
+      if (blocks.length === 0 || blocks[blocks.length - 1].type !== "text") {
+        blocks.push({ type: "text", lines: [] });
+      }
+      blocks[blocks.length - 1].lines.push(lines[i]);
+      i++;
+    }
+  }
 
   return (
     <div className="space-y-2 text-sm leading-relaxed">
-      {lines.map((line, index) => {
-        // Headers
-        if (line.startsWith("### ")) {
-          return (
-            <h3 key={index} className="font-semibold text-base mt-3">
-              <FormattedText text={line.slice(4)} />
-            </h3>
-          );
+      {blocks.map((block, bi) => {
+        if (block.type === "table") {
+          return <MarkdownTable key={bi} rows={block.lines} />;
         }
-        if (line.startsWith("## ")) {
-          return (
-            <h2 key={index} className="font-semibold text-lg mt-4">
-              <FormattedText text={line.slice(3)} />
-            </h2>
-          );
-        }
-        if (line.startsWith("# ")) {
-          return (
-            <h1 key={index} className="font-bold text-xl mt-4">
-              <FormattedText text={line.slice(2)} />
-            </h1>
-          );
-        }
+        return block.lines.map((line, li) => {
+          const key = `${bi}-${li}`;
+          // Headers
+          if (line.startsWith("### ")) {
+            return (
+              <h3 key={key} className="font-semibold text-base mt-3">
+                <FormattedText text={line.slice(4)} />
+              </h3>
+            );
+          }
+          if (line.startsWith("## ")) {
+            return (
+              <h2 key={key} className="font-semibold text-lg mt-4">
+                <FormattedText text={line.slice(3)} />
+              </h2>
+            );
+          }
+          if (line.startsWith("# ")) {
+            return (
+              <h1 key={key} className="font-bold text-xl mt-4">
+                <FormattedText text={line.slice(2)} />
+              </h1>
+            );
+          }
 
-        // Horizontal rule
-        if (line.trim() === "---") {
-          return <hr key={index} className="border-border my-4" />;
-        }
+          // Horizontal rule
+          if (line.trim() === "---") {
+            return <hr key={key} className="border-border my-4" />;
+          }
 
-        // List items
-        if (line.match(/^\d+\.\s/)) {
-          return (
-            <p key={index} className="ml-4">
-              <FormattedText text={line} />
-            </p>
-          );
-        }
-        if (line.startsWith("- ")) {
-          return (
-            <p key={index} className="ml-4">
-              • <FormattedText text={line.slice(2)} />
-            </p>
-          );
-        }
+          // List items
+          if (line.match(/^\d+\.\s/)) {
+            return (
+              <p key={key} className="ml-4">
+                <FormattedText text={line} />
+              </p>
+            );
+          }
+          if (line.startsWith("- ")) {
+            return (
+              <p key={key} className="ml-4">
+                • <FormattedText text={line.slice(2)} />
+              </p>
+            );
+          }
 
-        // Regular paragraph
-        if (line.trim()) {
-          return (
-            <p key={index}>
-              <FormattedText text={line} />
-            </p>
-          );
-        }
+          // Regular paragraph
+          if (line.trim()) {
+            return (
+              <p key={key}>
+                <FormattedText text={line} />
+              </p>
+            );
+          }
 
-        return null;
+          return null;
+        });
       })}
     </div>
   );
