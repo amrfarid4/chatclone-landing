@@ -48,15 +48,21 @@ export function MessageBubble({ message, isLatest, onSuggestedQuestion, showSugg
             <div className="rounded-3xl border border-chat-ai-border bg-chat-ai-bubble px-4 py-3 text-chat-ai-foreground">
               <MessageContent content={message.content} isUser={isUser} />
             </div>
-            {/* Report Cards */}
+            {/* Report Cards — staggered reveal */}
             {message.reportType === "daily-brief" && message.reportData && (
-              <DailyBriefCard data={message.reportData} />
+              <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
+                <DailyBriefCard data={message.reportData} />
+              </div>
             )}
             {message.reportType === "weekly-scorecard" && message.reportData && (
-              <WeeklyScorecardCard data={message.reportData} />
+              <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
+                <WeeklyScorecardCard data={message.reportData} />
+              </div>
             )}
             {message.reportType === "customer-intelligence" && message.reportData && (
-              <CustomerIntelCard data={message.reportData} />
+              <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
+                <CustomerIntelCard data={message.reportData} />
+              </div>
             )}
           </div>
         </div>
@@ -71,9 +77,9 @@ export function MessageBubble({ message, isLatest, onSuggestedQuestion, showSugg
         </div>
       )}
 
-      {/* Suggested follow-up questions */}
+      {/* Suggested follow-up questions — appear last */}
       {hasSuggestions && (
-        <div className={cn("mt-3 ml-11 flex flex-wrap gap-2 animate-fade-in", hasCampaigns && "mt-2")}>
+        <div className={cn("mt-3 ml-11 flex flex-wrap gap-2 opacity-0 animate-fade-in-up", hasCampaigns && "mt-2")} style={{ animationDelay: "1200ms" }}>
           {suggestions.map((question, idx) => (
             <button
               key={idx}

@@ -43,6 +43,7 @@ export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [briefLoading, setBriefLoading] = useState(true);
+  const [briefFadingOut, setBriefFadingOut] = useState(false);
   const [branches, setBranches] = useState<BranchInfo[]>([]);
   const [selectedBranch, setSelectedBranch] = useState("all");
   const briefLoaded = useRef(false);
@@ -81,11 +82,14 @@ export function ChatInterface() {
           ],
         };
         setMessages([briefMessage]);
-        setBriefLoading(false);
+        // Fade out loading screen, then reveal content
+        setBriefFadingOut(true);
+        setTimeout(() => setBriefLoading(false), 350);
       })
       .catch(() => {
         // Silently fall back to WelcomeScreen
-        setBriefLoading(false);
+        setBriefFadingOut(true);
+        setTimeout(() => setBriefLoading(false), 350);
       });
   }, []);
 
@@ -239,7 +243,7 @@ export function ChatInterface() {
 
       {/* Chat Content */}
       {briefLoading ? (
-        <BriefLoadingScreen />
+        <BriefLoadingScreen fadeOut={briefFadingOut} />
       ) : hasMessages ? (
         <ChatMessages messages={messages} isLoading={isLoading} onSuggestedQuestion={handleSendMessage} />
       ) : (
