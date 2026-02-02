@@ -5,7 +5,7 @@ export function BriefLoadingScreen() {
         <div className="w-10 h-10 rounded-full bg-teal-600 flex items-center justify-center mx-auto">
           <span className="text-white font-bold text-sm">D</span>
         </div>
-        <p className="text-gray-600 text-sm">Your CMO is reviewing today's numbers...</p>
+        <p className="text-gray-600 text-sm">Your CMO is preparing your brief...</p>
         <div className="flex justify-center gap-3">
           {[0, 1, 2, 3].map((i) => (
             <div

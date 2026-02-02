@@ -1,16 +1,40 @@
 import { KPICard } from "./KPICard";
-import { AlertTriangle, TrendingUp } from "lucide-react";
+import { AlertTriangle, Clock, TrendingUp } from "lucide-react";
 
 interface DailyBriefCardProps {
   data: Record<string, any>;
+}
+
+function formatDataDate(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 export function DailyBriefCard({ data }: DailyBriefCardProps) {
   const kpis = data?.yesterday_kpis || {};
   const deltas = data?.deltas || {};
 
+  const dataDate = data?.date || data?.data_as_of;
+  const isStale = (() => {
+    if (!dataDate) return false;
+    const dataDay = new Date(dataDate + "T00:00:00");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor((today.getTime() - dataDay.getTime()) / (1000 * 60 * 60 * 24));
+    return diffDays > 1;
+  })();
+
   return (
     <div className="mt-3 space-y-3">
+      {/* Data freshness badge */}
+      {dataDate && (
+        <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+          <Clock className="h-3 w-3" />
+          <span>Data through {formatDataDate(dataDate)}</span>
+          {isStale && <span className="text-amber-500 font-medium">&middot; Updating</span>}
+        </div>
+      )}
+
       {/* KPI Grid */}
       <div className="grid grid-cols-2 gap-2">
         <KPICard

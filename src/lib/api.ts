@@ -130,6 +130,7 @@ export async function checkHealth(): Promise<{
 export interface DailyBriefResponse {
   brief: string;
   data: Record<string, unknown>;
+  data_as_of: string;
   timestamp: string;
 }
 
