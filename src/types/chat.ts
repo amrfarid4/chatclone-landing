@@ -23,6 +23,7 @@ export interface Message {
   actionCampaigns?: ActionCampaign[];
   reportType?: ReportType;
   reportData?: Record<string, unknown>;
+  brainInteractionId?: string;
 }
 
 export interface Conversation {

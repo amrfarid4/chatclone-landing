@@ -171,3 +171,25 @@ export async function getCustomerIntelligence(): Promise<CustomerIntelligenceRes
   }
   return response.json();
 }
+
+// --- Brain feedback ---
+
+export async function submitFeedback(
+  interactionId: string,
+  feedbackType: 'thumbs_up' | 'thumbs_down',
+): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(`${API_URL}/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      interaction_id: interactionId,
+      feedback_type: feedbackType,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+
+  return response.json();
+}

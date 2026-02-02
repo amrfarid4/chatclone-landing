@@ -136,6 +136,7 @@ export function ChatInterface() {
             timestamp: new Date(),
             suggestedQuestions: data.suggested_questions,
             actionCampaigns: data.action_campaigns,
+            brainInteractionId: data.metadata?.brain_interaction_id as string | undefined,
           };
 
           setMessages([...updatedMessages, aiMessage]);

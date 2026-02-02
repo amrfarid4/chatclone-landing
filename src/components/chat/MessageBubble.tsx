@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { Check, Copy, ArrowRight, Zap, ThumbsUp, ThumbsDown } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { submitCampaignAction } from "@/lib/api";
+import { submitCampaignAction, submitFeedback } from "@/lib/api";
 import { DailyBriefCard } from "./reports/DailyBriefCard";
 import { WeeklyScorecardCard } from "./reports/WeeklyScorecardCard";
 import { CustomerIntelCard } from "./reports/CustomerIntelCard";
@@ -63,6 +63,10 @@ export function MessageBubble({ message, isLatest, onSuggestedQuestion, showSugg
               <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
                 <CustomerIntelCard data={message.reportData} />
               </div>
+            )}
+            {/* Feedback buttons */}
+            {message.brainInteractionId && (
+              <FeedbackButtons interactionId={message.brainInteractionId} />
             )}
           </div>
         </div>
@@ -169,6 +173,50 @@ function CampaignCard({ campaign }: { campaign: ActionCampaign }) {
           {status === "approved" ? "Approved — queued for execution" : "Skipped"}
         </div>
       )}
+    </div>
+  );
+}
+
+function FeedbackButtons({ interactionId }: { interactionId: string }) {
+  const [feedback, setFeedback] = useState<"none" | "thumbs_up" | "thumbs_down">("none");
+
+  const handleFeedback = async (type: "thumbs_up" | "thumbs_down") => {
+    setFeedback(type);
+    try {
+      await submitFeedback(interactionId, type);
+    } catch {
+      // Still show the selection even if API fails
+    }
+  };
+
+  if (feedback !== "none") {
+    return (
+      <div className="mt-1.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+        {feedback === "thumbs_up" ? (
+          <><ThumbsUp className="h-3 w-3 text-primary" /> Thanks for the feedback</>
+        ) : (
+          <><ThumbsDown className="h-3 w-3 text-muted-foreground" /> Got it, we'll improve</>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-1.5 flex items-center gap-1 opacity-0 animate-fade-in" style={{ animationDelay: "600ms" }}>
+      <button
+        onClick={() => handleFeedback("thumbs_up")}
+        className="p-1 rounded-md text-muted-foreground/50 hover:text-primary hover:bg-primary/5 transition-colors"
+        title="Helpful"
+      >
+        <ThumbsUp className="h-3.5 w-3.5" />
+      </button>
+      <button
+        onClick={() => handleFeedback("thumbs_down")}
+        className="p-1 rounded-md text-muted-foreground/50 hover:text-destructive hover:bg-destructive/5 transition-colors"
+        title="Not helpful"
+      >
+        <ThumbsDown className="h-3.5 w-3.5" />
+      </button>
     </div>
   );
 }
