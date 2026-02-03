@@ -74,32 +74,36 @@ export interface ResponseSection {
 }
 
 // ============================================================================
-// Pattern Matchers
+// Pattern Matchers - Designed for Brain API response format
 // ============================================================================
 
 const PATTERNS = {
-  // Headline patterns
-  headline: /^(?:\*\*)?Headline:?\s*(.+?)(?:\*\*)?$/im,
+  // Headline patterns - matches "HEADLINE: text" or "**Headline:** text"
+  headline: /^(?:\*\*)?HEADLINE:?\s*(.+?)(?:\*\*)?$/im,
   boldHeadline: /^\*\*([^*\n]+)\*\*$/m,
 
-  // KPI patterns - matches "Revenue: 1,600 EGP" or "Orders: 16 units"
-  kpi: /(?:^|\n)\s*[-•*]?\s*(?:🔥|📊|💰|📈|📉)?\s*(Revenue|Orders|GMV|AOV|Units|Customers?|Share|Approval|Discount)(?:\s*Rate)?:\s*(?:EGP\s*)?([\d,]+(?:\.\d+)?)\s*(EGP|%|units?)?/gi,
+  // Section headers like "THE NUMBERS (vs same day last week):" or "ALERTS:"
+  sectionHeader: /^([A-Z][A-Z\s]+?)(?:\s*\([^)]+\))?:\s*$/gm,
 
-  // Trend patterns - matches "↑ +12%" or "down -4.9%"
-  trend: /([↑↓]|up|down)\s*([+-]?\d+(?:\.\d+)?%?)/gi,
+  // KPI patterns - matches "• GMV: 32,195 EGP ↑ 0.5%" format
+  // Expanded to include more metric names from Brain API
+  kpiLine: /^[•\-\*]\s*(GMV|Revenue|Orders?|AOV|Units?|Customers?|Share|Approval\s*rate?|Split\s*rate?|Discount|Total|Sales|Avg|Average)s?:\s*([\d,]+(?:\.\d+)?)\s*(EGP|%|units?)?\s*([↑↓])?\s*([+-]?\d+(?:\.\d+)?%?)?/gim,
+
+  // Trend patterns - matches "↑ +12%" or "↓ 29.2%"
+  trend: /([↑↓])\s*([+-]?\d+(?:\.\d+)?%?)/g,
 
   // Menu engineering classes
   menuClass: /(?:^|\n)\s*[-•*]?\s*(?:⭐|🐴|🧩|🐕)?\s*(STAR|PLOWHORSE|PUZZLE|DOG)(?:\s*\([^)]+\))?:\s*(.+?)(?=\n|$)/gi,
 
-  // Recommendations - numbered list after "Here's what I'd do:"
-  recommendationHeader: /(?:Here's what I'd do|Recommendations?|Actions?|What I'd recommend):\s*\n?/i,
+  // Recommendations - numbered list after various headers
+  recommendationHeader: /(?:Here's what I'd do|Recommendations?|Actions?|What I'd recommend|Next steps?):\s*\n?/i,
   numberedItem: /^\s*(\d+)\.\s+(.+?)(?:\n|$)/gm,
+
+  // Alert/anomaly items - "• Item: X qty vs Y avg ↓ Z%"
+  alertItem: /^[•\-\*]\s*([^:]+):\s*(\d+)\s*(?:qty|units?)?\s*vs\s*([\d.]+)\s*avg\s*([↑↓])\s*([\d.]+%?)\s*(?:→\s*(.+))?$/gim,
 
   // Bullet points / insights
   bulletPoint: /^[-•*]\s+(.+?)$/gm,
-
-  // Section headers
-  sectionHeader: /^(?:#{1,3}\s+)?(?:📊|🔥|💡|📈|⚠️)?\s*\*?\*?([^*\n:]+?)(?:\s*\([^)]+\))?\*?\*?\s*:?\s*$/gm,
 
   // Data table (markdown format)
   markdownTable: /\|(.+)\|\n\|[-:| ]+\|\n((?:\|.+\|\n?)+)/g,
@@ -107,7 +111,7 @@ const PATTERNS = {
   // Top items list pattern
   topItemsList: /(?:Top\s+\d+|Top\s+items?|Best\s+sellers?|Highest)\s*(?:by|in)?\s*(\w+)?/i,
 
-  // Item with value pattern
+  // Item with value pattern for charts
   itemWithValue: /[-•*]\s*(?:🔥|⭐|🧩|🐕)?\s*([^:]+?):\s*([\d,]+)\s*(EGP|units?|%|orders?)?(?:\s*\|)?/gi,
 };
 
@@ -142,51 +146,62 @@ function extractHeadline(text: string): { headline?: string; remainingText: stri
 
 /**
  * Extract KPI metrics from response
+ * Handles format: "• GMV: 32,195 EGP ↑ 0.5%"
  */
 function extractKPIs(text: string): { kpis: KPICard[]; remainingText: string } {
   const kpis: KPICard[] = [];
   let remainingText = text;
 
-  // Find all KPI-like patterns
-  const kpiMatches = [...text.matchAll(PATTERNS.kpi)];
+  // Look for "THE NUMBERS" section or similar
+  const numbersSection = text.match(/(?:THE NUMBERS|KEY METRICS|METRICS|SUMMARY)[^:]*:\s*\n((?:[•\-\*].+\n?)+)/im);
+  const searchText = numbersSection ? numbersSection[1] : text;
 
-  for (const match of kpiMatches) {
-    const label = match[1];
-    const rawValue = match[2].replace(/,/g, "");
-    const unit = match[3] || "";
+  // Find all KPI-like patterns using the new format
+  const lines = searchText.split('\n');
 
-    const value = parseFloat(rawValue);
+  for (const line of lines) {
+    // Match format: "• GMV: 32,195 EGP ↑ 0.5%" or "• Orders: 17 ↓ 29.2%"
+    const kpiMatch = line.match(/^[•\-\*]\s*([^:]+?):\s*([\d,]+(?:\.\d+)?)\s*(EGP|%|units?)?\s*([↑↓])?\s*([+-]?\d+(?:\.\d+)?%?)?/i);
 
-    // Look for trend near this KPI
-    const contextStart = Math.max(0, (match.index || 0) - 20);
-    const contextEnd = Math.min(text.length, (match.index || 0) + match[0].length + 50);
-    const context = text.slice(contextStart, contextEnd);
+    if (kpiMatch) {
+      const label = kpiMatch[1].trim();
+      const rawValue = kpiMatch[2].replace(/,/g, "");
+      const unit = kpiMatch[3] || "";
+      const trendDir = kpiMatch[4];
+      const trendVal = kpiMatch[5];
 
-    const trendMatch = context.match(/([↑↓]|up|down)\s*([+-]?\d+(?:\.\d+)?%?)/i);
-    let trend: KPICard["trend"] | undefined;
+      const value = parseFloat(rawValue);
 
-    if (trendMatch) {
-      const direction = trendMatch[1].toLowerCase().includes("↑") || trendMatch[1].toLowerCase() === "up"
-        ? "up"
-        : "down";
-      const trendValue = parseFloat(trendMatch[2].replace("%", ""));
+      // Build trend object if trend info exists
+      let trend: KPICard["trend"] | undefined;
+      if (trendDir && trendVal) {
+        trend = {
+          direction: trendDir === "↑" ? "up" : "down",
+          value: Math.abs(parseFloat(trendVal.replace("%", "").replace("+", "").replace("-", ""))),
+          label: "vs last period",
+        };
+      }
 
-      trend = {
-        direction,
-        value: Math.abs(trendValue),
-        label: direction === "up" ? "vs last period" : "vs last period",
-      };
+      // Only add if it looks like a real KPI metric (not an alert/item)
+      const isKPI = /^(GMV|Revenue|Orders?|AOV|Units?|Customers?|Share|Approval|Split|Discount|Total|Sales|Avg)/i.test(label);
+
+      if (isKPI) {
+        kpis.push({
+          label: normalizeKPILabel(label),
+          value: isNaN(value) ? rawValue : value,
+          unit: normalizeUnit(unit),
+          trend,
+        });
+
+        // Remove this line from remaining text
+        remainingText = remainingText.replace(line, "");
+      }
     }
+  }
 
-    kpis.push({
-      label: normalizeKPILabel(label),
-      value: isNaN(value) ? rawValue : value,
-      unit: normalizeUnit(unit),
-      trend,
-    });
-
-    // Remove this KPI from text
-    remainingText = remainingText.replace(match[0], "");
+  // Also remove the "THE NUMBERS" header if we found KPIs
+  if (kpis.length > 0 && numbersSection) {
+    remainingText = remainingText.replace(/(?:THE NUMBERS|KEY METRICS|METRICS)[^:]*:\s*\n?/im, "");
   }
 
   return { kpis: kpis.length > 0 ? kpis : [], remainingText: remainingText.trim() };
@@ -272,17 +287,86 @@ function extractRecommendations(text: string): { recommendations: Recommendation
 }
 
 /**
- * Extract bullet point insights
+ * Extract alerts from "ALERTS" section
+ * Format: "• Cappuccino: 3 qty vs 19.1 avg ↓ 84.3% → check stock..."
+ */
+function extractAlerts(text: string): { alerts: InsightItem[]; remainingText: string } {
+  const alerts: InsightItem[] = [];
+  let remainingText = text;
+
+  // Look for ALERTS section
+  const alertsSection = text.match(/ALERTS[^:]*:\s*\n((?:[•\-\*].+\n?)+)/im);
+  if (!alertsSection) {
+    return { alerts: [], remainingText };
+  }
+
+  const alertLines = alertsSection[1].split('\n').filter(line => line.trim());
+
+  for (const line of alertLines) {
+    // Match format: "• Item: X qty vs Y avg ↓ Z% → action"
+    const alertMatch = line.match(/^[•\-\*]\s*([^:]+):\s*(\d+)\s*(?:qty|units?)?\s*vs\s*([\d.]+)\s*avg\s*([↑↓])\s*([\d.]+%?)\s*(?:→\s*(.+))?$/i);
+
+    if (alertMatch) {
+      const itemName = alertMatch[1].trim();
+      const currentQty = alertMatch[2];
+      const avgQty = alertMatch[3];
+      const direction = alertMatch[4];
+      const changePercent = alertMatch[5];
+      const action = alertMatch[6]?.trim() || "";
+
+      const isDown = direction === "↓";
+
+      alerts.push({
+        text: `**${itemName}**: ${currentQty} vs ${avgQty} avg (${direction}${changePercent})${action ? ` — ${action}` : ""}`,
+        icon: isDown ? "⚠️" : "📈",
+        type: isDown ? "warning" : "info",
+      });
+
+      remainingText = remainingText.replace(line, "");
+    } else if (line.trim().startsWith("•") || line.trim().startsWith("-")) {
+      // Fallback: treat as generic alert
+      const bulletText = line.replace(/^[•\-\*]\s*/, "").trim();
+      if (bulletText) {
+        alerts.push({
+          text: bulletText,
+          icon: "⚠️",
+          type: "warning",
+        });
+        remainingText = remainingText.replace(line, "");
+      }
+    }
+  }
+
+  // Remove ALERTS header
+  if (alerts.length > 0) {
+    remainingText = remainingText.replace(/ALERTS[^:]*:\s*\n?/im, "");
+  }
+
+  return { alerts, remainingText: remainingText.trim() };
+}
+
+/**
+ * Extract bullet point insights (excluding KPIs and alerts)
  */
 function extractInsights(text: string): { insights: InsightItem[]; remainingText: string } {
   const insights: InsightItem[] = [];
   let remainingText = text;
 
-  // Find bullet points
+  // Find bullet points that aren't KPIs or alerts
   const matches = [...text.matchAll(/^[-•*]\s+(.+?)$/gm)];
 
   for (const match of matches) {
     let itemText = match[1].trim();
+
+    // Skip if it looks like a KPI line (has colon followed by number)
+    if (/^[^:]+:\s*[\d,]+/.test(itemText)) {
+      continue;
+    }
+
+    // Skip if it looks like an alert (has "vs avg")
+    if (/vs\s*[\d.]+\s*avg/i.test(itemText)) {
+      continue;
+    }
 
     // Determine type based on emoji or content
     let type: InsightItem["type"] = "info";
@@ -292,23 +376,24 @@ function extractInsights(text: string): { insights: InsightItem[]; remainingText
       type = "highlight";
       icon = "🔥";
       itemText = itemText.slice(2).trim();
-    } else if (itemText.startsWith("⚠️") || itemText.toLowerCase().includes("warning")) {
+    } else if (itemText.startsWith("⚠️") || itemText.toLowerCase().includes("warning") || itemText.toLowerCase().includes("alert")) {
       type = "warning";
       icon = "⚠️";
-      itemText = itemText.slice(2).trim();
+      if (itemText.startsWith("⚠️")) itemText = itemText.slice(2).trim();
     } else if (itemText.startsWith("✅") || itemText.startsWith("🎯")) {
       type = "success";
       icon = itemText.slice(0, 2);
       itemText = itemText.slice(2).trim();
     }
 
-    insights.push({
-      text: itemText,
-      icon,
-      type,
-    });
-
-    remainingText = remainingText.replace(match[0], "");
+    if (itemText.length > 10) { // Only add substantial insights
+      insights.push({
+        text: itemText,
+        icon,
+        type,
+      });
+      remainingText = remainingText.replace(match[0], "");
+    }
   }
 
   return { insights: insights.length > 0 ? insights : [], remainingText: remainingText.trim() };
@@ -376,20 +461,30 @@ function extractTable(text: string): { table?: TableData; remainingText: string 
 // ============================================================================
 
 function normalizeKPILabel(label: string): string {
+  const cleanLabel = label.toLowerCase().trim();
   const mapping: Record<string, string> = {
     revenue: "Revenue",
     gmv: "Revenue",
     orders: "Orders",
+    order: "Orders",
     aov: "Avg Order",
     units: "Units Sold",
+    unit: "Units Sold",
     customers: "Customers",
     customer: "Customers",
     share: "Share",
     approval: "Approval",
+    "approval rate": "Approval Rate",
     discount: "Discount",
+    "split rate": "Split Rate",
+    split: "Split Rate",
+    total: "Total",
+    sales: "Sales",
+    avg: "Average",
+    average: "Average",
   };
 
-  return mapping[label.toLowerCase()] || label;
+  return mapping[cleanLabel] || label;
 }
 
 function normalizeUnit(unit: string): string {
@@ -417,7 +512,7 @@ export function parseResponse(content: string): ParsedResponse {
   const sections: ResponseSection[] = [];
   let order = 0;
 
-  // 1. Extract headline
+  // 1. Extract headline (HEADLINE: text)
   const { headline, remainingText: afterHeadline } = extractHeadline(text);
   if (headline) {
     result.headline = headline;
@@ -425,7 +520,7 @@ export function parseResponse(content: string): ParsedResponse {
     text = afterHeadline;
   }
 
-  // 2. Extract KPIs
+  // 2. Extract KPIs from "THE NUMBERS" section
   const { kpis, remainingText: afterKPIs } = extractKPIs(text);
   if (kpis.length > 0) {
     result.kpiCards = kpis;
@@ -433,7 +528,11 @@ export function parseResponse(content: string): ParsedResponse {
     text = afterKPIs;
   }
 
-  // 3. Extract chart data
+  // 3. Extract alerts from "ALERTS" section (rendered as insights)
+  const { alerts, remainingText: afterAlerts } = extractAlerts(text);
+  text = afterAlerts;
+
+  // 4. Extract chart data
   const { chartData, remainingText: afterChart } = extractChartData(text);
   if (chartData.length > 0) {
     result.chartData = chartData;
@@ -441,7 +540,7 @@ export function parseResponse(content: string): ParsedResponse {
     text = afterChart;
   }
 
-  // 4. Extract menu engineering
+  // 5. Extract menu engineering
   const { menuEng, remainingText: afterMenu } = extractMenuEngineering(text);
   if (menuEng.length > 0) {
     result.menuEngineering = menuEng;
@@ -449,7 +548,7 @@ export function parseResponse(content: string): ParsedResponse {
     text = afterMenu;
   }
 
-  // 5. Extract recommendations
+  // 6. Extract recommendations
   const { recommendations, remainingText: afterRecs } = extractRecommendations(text);
   if (recommendations.length > 0) {
     result.recommendations = recommendations;
@@ -457,15 +556,18 @@ export function parseResponse(content: string): ParsedResponse {
     text = afterRecs;
   }
 
-  // 6. Extract insights (bullet points)
-  const { insights, remainingText: afterInsights } = extractInsights(text);
-  if (insights.length > 0) {
-    result.insights = insights;
-    sections.push({ type: "insights", title: "What the data says", content: insights, order: order++ });
+  // 7. Extract other insights (bullet points)
+  const { insights: otherInsights, remainingText: afterInsights } = extractInsights(text);
+
+  // Combine alerts and other insights
+  const allInsights = [...alerts, ...otherInsights];
+  if (allInsights.length > 0) {
+    result.insights = allInsights;
+    sections.push({ type: "insights", title: alerts.length > 0 ? "Alerts & Insights" : "What the data says", content: allInsights, order: order++ });
     text = afterInsights;
   }
 
-  // 7. Extract table
+  // 8. Extract table
   const { table, remainingText: afterTable } = extractTable(text);
   if (table) {
     result.tableData = table;
@@ -473,8 +575,12 @@ export function parseResponse(content: string): ParsedResponse {
     text = afterTable;
   }
 
-  // 8. Keep remaining text
-  const cleanedText = text.replace(/\n{3,}/g, "\n\n").trim();
+  // 9. Keep remaining text (but clean up section headers)
+  let cleanedText = text
+    .replace(/^[A-Z][A-Z\s]+:\s*$/gm, "") // Remove empty section headers
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
   if (cleanedText.length > 50) {
     result.rawText = cleanedText;
     sections.push({ type: "text", content: cleanedText, order: order++ });
@@ -490,10 +596,12 @@ export function parseResponse(content: string): ParsedResponse {
  */
 export function hasVisualContent(parsed: ParsedResponse): boolean {
   return Boolean(
+    parsed.headline ||
     parsed.kpiCards?.length ||
     parsed.chartData?.length ||
     parsed.menuEngineering?.length ||
     parsed.recommendations?.length ||
+    parsed.insights?.length ||
     parsed.tableData
   );
 }
