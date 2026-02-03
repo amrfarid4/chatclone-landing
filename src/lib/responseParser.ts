@@ -78,8 +78,8 @@ export interface ResponseSection {
 // ============================================================================
 
 const PATTERNS = {
-  // Headline patterns - matches "HEADLINE: text" or "**Headline:** text"
-  headline: /^(?:\*\*)?HEADLINE:?\s*(.+?)(?:\*\*)?$/im,
+  // Headline patterns - matches "HEADLINE: text", "## Headline: text", "**Headline:** text"
+  headline: /^(?:#{1,3}\s*)?(?:\*\*)?HEADLINE:?\s*(.+?)(?:\*\*)?$/im,
   boldHeadline: /^\*\*([^*\n]+)\*\*$/m,
 
   // Section headers like "THE NUMBERS (vs same day last week):" or "ALERTS:"
@@ -111,8 +111,17 @@ const PATTERNS = {
   // Top items list pattern
   topItemsList: /(?:Top\s+\d+|Top\s+items?|Best\s+sellers?|Highest)\s*(?:by|in)?\s*(\w+)?/i,
 
-  // Item with value pattern for charts
-  itemWithValue: /[-•*]\s*(?:🔥|⭐|🧩|🐕)?\s*([^:]+?):\s*([\d,]+)\s*(EGP|units?|%|orders?)?(?:\s*\|)?/gi,
+  // Item with value pattern for charts - matches various Brain API formats:
+  // "• 🔥 Steak & Fries: 4 units = 2,600 EGP GMV (22%)"
+  // "• Cappuccino: 16 units"
+  // "- Item Name: 500 EGP"
+  itemWithValue: /[-•*]\s*(?:🔥|⭐|🧩|🐕|📊)?\s*([^:\n]+?):\s*(\d+)\s*(?:units?|orders?|qty)?\s*(?:=\s*)?([\d,]+(?:\.\d+)?)\s*(EGP|GMV)?/gi,
+
+  // Simpler pattern for "Item: VALUE UNIT" format
+  itemSimple: /[-•*]\s*(?:🔥|⭐|🧩|🐕|📊)?\s*([^:\n]+?):\s*([\d,]+(?:\.\d+)?)\s*(EGP|units?|%|orders?)/gi,
+
+  // Ranked list pattern - matches "1. Item Name - 500 EGP" or "1. Item: 500"
+  rankedItem: /^\s*(\d+)\.\s*([^:\-–]+?)[\s:\-–]+([\d,]+(?:\.\d+)?)\s*(EGP|units?|%)?/gm,
 };
 
 // ============================================================================
@@ -123,11 +132,13 @@ const PATTERNS = {
  * Extract headline from response
  */
 function extractHeadline(text: string): { headline?: string; remainingText: string } {
-  // Try explicit "Headline:" pattern
+  // Try explicit "Headline:" pattern (handles ## Headline:, **HEADLINE:**, etc.)
   let match = text.match(PATTERNS.headline);
   if (match) {
+    // Clean up the extracted headline - remove ** markers and trim
+    let headline = match[1].trim().replace(/^\*\*\s*/, '').replace(/\s*\*\*$/, '');
     return {
-      headline: match[1].trim(),
+      headline,
       remainingText: text.replace(match[0], "").trim(),
     };
   }
@@ -146,33 +157,97 @@ function extractHeadline(text: string): { headline?: string; remainingText: stri
 
 /**
  * Extract KPI metrics from response
- * Handles format: "• GMV: 32,195 EGP ↑ 0.5%"
+ * Handles actual Brain API formats from production:
+ * - "28,382.95 EGP GMV from 17 successful orders"
+ * - "1,669.59 EGP AOV ⚠️"
+ * - "94.1% payment approval rate"
+ * - "2,076 EGP in tips"
  */
 function extractKPIs(text: string): { kpis: KPICard[]; remainingText: string } {
   const kpis: KPICard[] = [];
   let remainingText = text;
+  const seenLabels = new Set<string>();
+  const matchedLines = new Set<string>();
 
-  // Look for "THE NUMBERS" section or similar
-  const numbersSection = text.match(/(?:THE NUMBERS|KEY METRICS|METRICS|SUMMARY)[^:]*:\s*\n((?:[•\-\*].+\n?)+)/im);
-  const searchText = numbersSection ? numbersSection[1] : text;
+  // Helper to add KPI if not duplicate
+  const addKPI = (label: string, value: number | string, unit: string, matchedText?: string, trend?: KPICard["trend"]) => {
+    const normalizedLabel = normalizeKPILabel(label);
+    if (seenLabels.has(normalizedLabel.toLowerCase())) return;
+    seenLabels.add(normalizedLabel.toLowerCase());
+    kpis.push({
+      label: normalizedLabel,
+      value,
+      unit: normalizeUnit(unit),
+      trend,
+    });
+    // Track matched text for removal from insights
+    if (matchedText) {
+      matchedLines.add(matchedText.trim());
+    }
+  };
 
-  // Find all KPI-like patterns using the new format
-  const lines = searchText.split('\n');
+  // Process line by line for more accurate matching
+  const lines = text.split('\n');
 
   for (const line of lines) {
-    // Match format: "• GMV: 32,195 EGP ↑ 0.5%" or "• Orders: 17 ↓ 29.2%"
-    const kpiMatch = line.match(/^[•\-\*]\s*([^:]+?):\s*([\d,]+(?:\.\d+)?)\s*(EGP|%|units?)?\s*([↑↓])?\s*([+-]?\d+(?:\.\d+)?%?)?/i);
+    const trimmedLine = line.trim();
+    if (!trimmedLine) continue;
 
-    if (kpiMatch) {
-      const label = kpiMatch[1].trim();
-      const rawValue = kpiMatch[2].replace(/,/g, "");
-      const unit = kpiMatch[3] || "";
-      const trendDir = kpiMatch[4];
-      const trendVal = kpiMatch[5];
+    // PATTERN 1: "28,382.95 EGP GMV from 17 successful orders"
+    const gmvOrdersMatch = trimmedLine.match(/^([\d,]+(?:\.\d+)?)\s*EGP\s+(?:GMV|total\s+sales|revenue)\s+from\s+(\d+)\s+(?:successful\s+)?orders/i);
+    if (gmvOrdersMatch) {
+      const gmvValue = parseFloat(gmvOrdersMatch[1].replace(/,/g, ""));
+      const ordersValue = parseInt(gmvOrdersMatch[2]);
+      addKPI("Revenue", gmvValue, "EGP", trimmedLine);
+      addKPI("Orders", ordersValue, "", trimmedLine);
+      continue;
+    }
+
+    // PATTERN 2: "1,669.59 EGP AOV" (with optional emoji/text after)
+    const aovMatch = trimmedLine.match(/^([\d,]+(?:\.\d+)?)\s*EGP\s+AOV\b/i);
+    if (aovMatch) {
+      const value = parseFloat(aovMatch[1].replace(/,/g, ""));
+      addKPI("Avg Order", value, "EGP", trimmedLine);
+      continue;
+    }
+
+    // PATTERN 3: "94.1% payment approval rate" or "Approval rate: 94.1%"
+    const approvalMatch = trimmedLine.match(/^([\d.]+)%\s+(?:payment\s+)?approval\s*(?:rate)?/i) ||
+                          trimmedLine.match(/^Approval\s*(?:rate)?:\s*([\d.]+)%/i);
+    if (approvalMatch) {
+      const value = parseFloat(approvalMatch[1]);
+      addKPI("Approval Rate", value, "%", trimmedLine);
+      continue;
+    }
+
+    // PATTERN 4: "2,076 EGP in tips" or "Tips: 2,076 EGP"
+    const tipsMatch = trimmedLine.match(/^([\d,]+(?:\.\d+)?)\s*EGP\s+(?:in\s+)?tips/i) ||
+                      trimmedLine.match(/^Tips?:\s*([\d,]+(?:\.\d+)?)\s*EGP/i);
+    if (tipsMatch) {
+      const value = parseFloat(tipsMatch[1].replace(/,/g, ""));
+      addKPI("Tips", value, "EGP", trimmedLine);
+      continue;
+    }
+
+    // PATTERN 5: "Split rate: 5.9%" or "5.9% split rate"
+    const splitMatch = trimmedLine.match(/^([\d.]+)%\s+(?:of\s+)?(?:orders?\s+had\s+)?split\s*(?:payments?|rate)?/i) ||
+                       trimmedLine.match(/^Split\s*(?:rate)?:\s*([\d.]+)%/i);
+    if (splitMatch) {
+      // Don't add split as KPI - it's more of an insight
+      continue;
+    }
+
+    // PATTERN 6: Traditional bullet format - "• GMV: 32,195 EGP ↑ 0.5%"
+    const bulletKpiMatch = trimmedLine.match(/^[•\-\*]\s*(GMV|Revenue|Orders?|AOV|Units?|Customers?|Total\s*Sales?|Tips?):\s*([\d,]+(?:\.\d+)?)\s*(EGP|%|units?)?\s*([↑↓])?\s*([+-]?\d+(?:\.\d+)?%?)?/i);
+    if (bulletKpiMatch) {
+      const label = bulletKpiMatch[1].trim();
+      const rawValue = bulletKpiMatch[2].replace(/,/g, "");
+      const unit = bulletKpiMatch[3] || "";
+      const trendDir = bulletKpiMatch[4];
+      const trendVal = bulletKpiMatch[5];
 
       const value = parseFloat(rawValue);
 
-      // Build trend object if trend info exists
       let trend: KPICard["trend"] | undefined;
       if (trendDir && trendVal) {
         trend = {
@@ -182,29 +257,30 @@ function extractKPIs(text: string): { kpis: KPICard[]; remainingText: string } {
         };
       }
 
-      // Only add if it looks like a real KPI metric (not an alert/item)
-      const isKPI = /^(GMV|Revenue|Orders?|AOV|Units?|Customers?|Share|Approval|Split|Discount|Total|Sales|Avg)/i.test(label);
-
-      if (isKPI) {
-        kpis.push({
-          label: normalizeKPILabel(label),
-          value: isNaN(value) ? rawValue : value,
-          unit: normalizeUnit(unit),
-          trend,
-        });
-
-        // Remove this line from remaining text
-        remainingText = remainingText.replace(line, "");
-      }
+      addKPI(label, isNaN(value) ? rawValue : value, unit, trimmedLine, trend);
+      continue;
     }
   }
 
-  // Also remove the "THE NUMBERS" header if we found KPIs
-  if (kpis.length > 0 && numbersSection) {
-    remainingText = remainingText.replace(/(?:THE NUMBERS|KEY METRICS|METRICS)[^:]*:\s*\n?/im, "");
+  // Remove matched KPI lines from remaining text to avoid showing in insights
+  for (const matchedLine of matchedLines) {
+    // Remove the line and any bullet point prefix
+    remainingText = remainingText.replace(new RegExp(`^[•\\-\\*]?\\s*${escapeRegex(matchedLine)}\\s*$`, 'gm'), '');
+    remainingText = remainingText.replace(matchedLine, '');
   }
 
-  return { kpis: kpis.length > 0 ? kpis : [], remainingText: remainingText.trim() };
+  // Also remove "THE NUMBERS" header if present
+  remainingText = remainingText.replace(/(?:THE NUMBERS|KEY METRICS|METRICS)[^:]*:\s*\n?/im, "");
+
+  // Clean up extra newlines
+  remainingText = remainingText.replace(/\n{3,}/g, '\n\n').trim();
+
+  return { kpis: kpis.length > 0 ? kpis : [], remainingText };
+}
+
+// Helper to escape special regex characters
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**
@@ -401,27 +477,142 @@ function extractInsights(text: string): { insights: InsightItem[]; remainingText
 
 /**
  * Extract chart data from top items lists
+ * Handles Brain API formats like:
+ * - "• 🔥 Steak & Fries: 4 units = 22% of beef units • 2,600 EGP GMV"
+ * - "• Cappuccino: 16 units | 1,600 EGP GMV"
+ * - "1. Item - 500 EGP"
  */
 function extractChartData(text: string): { chartData: ChartDataPoint[]; remainingText: string } {
   const chartData: ChartDataPoint[] = [];
   let remainingText = text;
+  const seenNames = new Set<string>();
 
-  // Look for item + value patterns
-  const matches = [...text.matchAll(PATTERNS.itemWithValue)];
+  // PRIMARY METHOD: Line-by-line extraction (most reliable)
+  // This handles the actual Brain API format: "• 🔥 Item: X units = Y% • N,NNN EGP GMV"
+  const lines = text.split('\n');
+  for (const line of lines) {
+    // Must be a bullet line (starts with •, -, or *)
+    const trimmedLine = line.trim();
+    if (!/^[-•*]/.test(trimmedLine)) continue;
 
-  for (const match of matches) {
-    const name = match[1].trim();
-    const rawValue = match[2].replace(/,/g, "");
-    const unit = match[3] || "";
+    // Extract item name (before first colon)
+    const nameMatch = trimmedLine.match(/^[-•*]\s*(?:🔥|⭐|🧩|🐕|📊|⚠️)?\s*([^:\n]+?):/);
+    if (!nameMatch) continue;
 
+    const name = nameMatch[1].trim();
+
+    // Skip if it's a KPI metric or header (these should go to KPI cards, not chart)
+    if (/^(GMV|Revenue|Orders?|AOV|Approval|Split|Total|Key|The|This|Tips?|Impact|Payment|Sales)/i.test(name)) continue;
+    if (seenNames.has(name.toLowerCase())) continue;
+    if (name.length < 2 || name.length > 50) continue;
+
+    // Find ALL "NUMBER EGP" patterns in the line
+    const egpMatches = [...trimmedLine.matchAll(/([\d,]+(?:\.\d+)?)\s*EGP/gi)];
+    if (egpMatches.length === 0) continue;
+
+    // Take the LARGEST EGP value (usually the GMV, not percentages or small values)
+    let maxValue = 0;
+    for (const egpMatch of egpMatches) {
+      const val = parseFloat(egpMatch[1].replace(/,/g, ""));
+      if (val > maxValue && val >= 100) { // Skip tiny values like percentages
+        maxValue = val;
+      }
+    }
+
+    // If no large value found, take any value > 0
+    if (maxValue === 0) {
+      for (const egpMatch of egpMatches) {
+        const val = parseFloat(egpMatch[1].replace(/,/g, ""));
+        if (val > maxValue) maxValue = val;
+      }
+    }
+
+    if (maxValue === 0) continue;
+
+    seenNames.add(name.toLowerCase());
     chartData.push({
-      name,
-      value: parseFloat(rawValue),
-      label: unit,
+      name: name.length > 20 ? name.substring(0, 17) + "..." : name,
+      value: maxValue,
+      label: "EGP",
     });
   }
 
-  return { chartData: chartData.length >= 3 ? chartData : [], remainingText };
+  // FALLBACK: Try simpler patterns if we don't have enough data
+  if (chartData.length < 3) {
+    // Simple pattern: "Item: VALUE EGP" without bullet
+    const simpleMatches = [...text.matchAll(/([A-Za-z][A-Za-z &']+?):\s*([\d,]+(?:\.\d+)?)\s*EGP/gi)];
+    for (const match of simpleMatches) {
+      const name = match[1].trim();
+      const rawValue = match[2].replace(/,/g, "");
+      const value = parseFloat(rawValue);
+
+      if (/^(GMV|Revenue|Orders?|AOV|Approval|Split|Total|Key|The|Tips?|Impact|Payment|Sales)/i.test(name)) continue;
+      if (seenNames.has(name.toLowerCase())) continue;
+      if (isNaN(value) || value === 0) continue;
+      if (name.length < 2 || name.length > 40) continue;
+
+      seenNames.add(name.toLowerCase());
+      chartData.push({
+        name: name.length > 20 ? name.substring(0, 17) + "..." : name,
+        value,
+        label: "EGP",
+      });
+    }
+  }
+
+  // Ranked list fallback: "1. Item - 500 EGP"
+  if (chartData.length < 3) {
+    const rankedMatches = [...text.matchAll(PATTERNS.rankedItem)];
+    for (const match of rankedMatches) {
+      const name = match[2].trim();
+      const rawValue = match[3].replace(/,/g, "");
+      const unit = match[4] || "";
+      const value = parseFloat(rawValue);
+
+      if (seenNames.has(name.toLowerCase())) continue;
+      if (isNaN(value) || value === 0) continue;
+
+      seenNames.add(name.toLowerCase());
+      chartData.push({
+        name: name.length > 20 ? name.substring(0, 17) + "..." : name,
+        value,
+        label: unit,
+      });
+    }
+  }
+
+  // Last resort: look for any "Item: N EGP GMV" pattern
+  if (chartData.length < 3) {
+    // More flexible pattern: "Item Name: N EGP GMV" or "Item: N,NNN EGP"
+    const flexPattern = /\*?\*?([A-Za-z][A-Za-z &']+?)(?:\*\*)?\s*[:=]\s*([\d,]+(?:\.\d+)?)\s*(?:EGP|GMV)/gi;
+    const flexMatches = [...text.matchAll(flexPattern)];
+
+    for (const match of flexMatches) {
+      const name = match[1].trim().replace(/^\*+/, '').replace(/\*+$/, '');
+      const rawValue = match[2].replace(/,/g, "");
+      const value = parseFloat(rawValue);
+
+      // Skip common non-item words
+      if (/^(total|revenue|gmv|orders?|aov|sales|headline|items?|beef|units?)/i.test(name)) continue;
+      if (seenNames.has(name.toLowerCase())) continue;
+      if (isNaN(value) || value === 0) continue;
+      if (name.length < 3 || name.length > 40) continue;
+
+      seenNames.add(name.toLowerCase());
+      chartData.push({
+        name: name.length > 20 ? name.substring(0, 17) + "..." : name,
+        value,
+        label: "EGP",
+      });
+    }
+  }
+
+  // Only return chart data if we have enough items
+  const minItemsForChart = 3;
+  return {
+    chartData: chartData.length >= minItemsForChart ? chartData.slice(0, 8) : [],
+    remainingText
+  };
 }
 
 /**
@@ -465,23 +656,28 @@ function normalizeKPILabel(label: string): string {
   const mapping: Record<string, string> = {
     revenue: "Revenue",
     gmv: "Revenue",
+    "total sales": "Revenue",
     orders: "Orders",
     order: "Orders",
     aov: "Avg Order",
+    "avg order": "Avg Order",
+    "average order value": "Avg Order",
     units: "Units Sold",
     unit: "Units Sold",
     customers: "Customers",
     customer: "Customers",
     share: "Share",
-    approval: "Approval",
+    approval: "Approval Rate",
     "approval rate": "Approval Rate",
     discount: "Discount",
     "split rate": "Split Rate",
     split: "Split Rate",
     total: "Total",
-    sales: "Sales",
+    sales: "Revenue",
     avg: "Average",
     average: "Average",
+    tips: "Tips",
+    tip: "Tips",
   };
 
   return mapping[cleanLabel] || label;
@@ -512,12 +708,8 @@ export function parseResponse(content: string): ParsedResponse {
   const sections: ResponseSection[] = [];
   let order = 0;
 
-  // Debug: log input
-  console.log("🔍 parseResponse input length:", content.length, "starts with:", content.substring(0, 100));
-
   // 1. Extract headline (HEADLINE: text)
   const { headline, remainingText: afterHeadline } = extractHeadline(text);
-  console.log("🔍 Headline extracted:", headline ? "YES" : "NO", headline?.substring(0, 50));
   if (headline) {
     result.headline = headline;
     sections.push({ type: "headline", content: headline, order: order++ });
@@ -526,7 +718,6 @@ export function parseResponse(content: string): ParsedResponse {
 
   // 2. Extract KPIs from "THE NUMBERS" section
   const { kpis, remainingText: afterKPIs } = extractKPIs(text);
-  console.log("🔍 KPIs extracted:", kpis.length, kpis.map(k => k.label));
   if (kpis.length > 0) {
     result.kpiCards = kpis;
     sections.push({ type: "kpis", content: kpis, order: order++ });
@@ -535,7 +726,6 @@ export function parseResponse(content: string): ParsedResponse {
 
   // 3. Extract alerts from "ALERTS" section (rendered as insights)
   const { alerts, remainingText: afterAlerts } = extractAlerts(text);
-  console.log("🔍 Alerts extracted:", alerts.length);
   text = afterAlerts;
 
   // 4. Extract chart data
@@ -593,15 +783,6 @@ export function parseResponse(content: string): ParsedResponse {
   }
 
   result.sections = sections;
-
-  // Debug: final summary
-  console.log("🔍 Parse complete:", {
-    hasHeadline: !!result.headline,
-    kpiCount: result.kpiCards?.length || 0,
-    alertCount: alerts.length,
-    insightCount: result.insights?.length || 0,
-    hasVisual: hasVisualContent(result),
-  });
 
   return result;
 }

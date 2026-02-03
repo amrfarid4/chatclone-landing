@@ -84,13 +84,22 @@ export function MessageBubble({
           />
 
           <div className="flex flex-col">
-            <div className="rounded-3xl border border-chat-ai-border bg-chat-ai-bubble px-4 py-3 text-chat-ai-foreground shadow-depth-1">
-              <MessageContent content={contentToRender} isUser={isUser} />
-              {/* Streaming cursor */}
-              {shouldStream && !isComplete && (
-                <span className="inline-block w-0.5 h-4 bg-primary animate-cursor-blink ml-0.5 align-middle" />
-              )}
-            </div>
+            {/* AI message bubble - show text OR visual, not both */}
+            {!message.reportType && hasVisualData(message.content) ? (
+              // Visual-first: Show parsed visual card INSTEAD of text
+              <div className="rounded-3xl border border-chat-ai-border bg-chat-ai-bubble px-4 py-3 text-chat-ai-foreground shadow-depth-1">
+                <ParsedBriefCard content={message.content} />
+              </div>
+            ) : (
+              // Standard: Show markdown text
+              <div className="rounded-3xl border border-chat-ai-border bg-chat-ai-bubble px-4 py-3 text-chat-ai-foreground shadow-depth-1">
+                <MessageContent content={contentToRender} isUser={isUser} />
+                {/* Streaming cursor */}
+                {shouldStream && !isComplete && (
+                  <span className="inline-block w-0.5 h-4 bg-primary animate-cursor-blink ml-0.5 align-middle" />
+                )}
+              </div>
+            )}
             {/* AI message actions */}
             {isComplete && (
               <MessageActions
@@ -116,12 +125,6 @@ export function MessageBubble({
             {isComplete && message.reportType === "customer-intelligence" && message.reportData && (
               <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
                 <CustomerIntelCard data={message.reportData} />
-              </div>
-            )}
-            {/* Parsed Visual Card - for text responses without structured reportData */}
-            {isComplete && !message.reportType && hasVisualData(message.content) && (
-              <div className="mt-3">
-                <ParsedBriefCard content={message.content} />
               </div>
             )}
             {/* Feedback buttons */}

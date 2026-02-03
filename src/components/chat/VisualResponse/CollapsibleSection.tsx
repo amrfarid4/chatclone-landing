@@ -9,6 +9,7 @@ interface CollapsibleSectionProps {
   children: ReactNode;
   defaultOpen?: boolean;
   className?: string;
+  delay?: number;
 }
 
 /**
@@ -26,6 +27,7 @@ export function CollapsibleSection({
   children,
   defaultOpen = true,
   className,
+  delay = 300,
 }: CollapsibleSectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
@@ -36,7 +38,7 @@ export function CollapsibleSection({
         "shadow-depth-1 opacity-0 animate-slide-up-fade",
         className
       )}
-      style={{ animationDelay: "300ms", animationFillMode: "forwards" }}
+      style={{ animationDelay: `${delay}ms`, animationFillMode: "forwards" }}
     >
       {/* Header - clickable */}
       <button
