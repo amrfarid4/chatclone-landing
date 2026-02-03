@@ -512,8 +512,12 @@ export function parseResponse(content: string): ParsedResponse {
   const sections: ResponseSection[] = [];
   let order = 0;
 
+  // Debug: log input
+  console.log("🔍 parseResponse input length:", content.length, "starts with:", content.substring(0, 100));
+
   // 1. Extract headline (HEADLINE: text)
   const { headline, remainingText: afterHeadline } = extractHeadline(text);
+  console.log("🔍 Headline extracted:", headline ? "YES" : "NO", headline?.substring(0, 50));
   if (headline) {
     result.headline = headline;
     sections.push({ type: "headline", content: headline, order: order++ });
@@ -522,6 +526,7 @@ export function parseResponse(content: string): ParsedResponse {
 
   // 2. Extract KPIs from "THE NUMBERS" section
   const { kpis, remainingText: afterKPIs } = extractKPIs(text);
+  console.log("🔍 KPIs extracted:", kpis.length, kpis.map(k => k.label));
   if (kpis.length > 0) {
     result.kpiCards = kpis;
     sections.push({ type: "kpis", content: kpis, order: order++ });
@@ -530,6 +535,7 @@ export function parseResponse(content: string): ParsedResponse {
 
   // 3. Extract alerts from "ALERTS" section (rendered as insights)
   const { alerts, remainingText: afterAlerts } = extractAlerts(text);
+  console.log("🔍 Alerts extracted:", alerts.length);
   text = afterAlerts;
 
   // 4. Extract chart data
@@ -587,6 +593,15 @@ export function parseResponse(content: string): ParsedResponse {
   }
 
   result.sections = sections;
+
+  // Debug: final summary
+  console.log("🔍 Parse complete:", {
+    hasHeadline: !!result.headline,
+    kpiCount: result.kpiCards?.length || 0,
+    alertCount: alerts.length,
+    insightCount: result.insights?.length || 0,
+    hasVisual: hasVisualContent(result),
+  });
 
   return result;
 }
