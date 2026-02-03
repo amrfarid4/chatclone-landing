@@ -7,12 +7,10 @@ import { submitCampaignAction, submitFeedback } from "@/lib/api";
 import { DailyBriefCard } from "./reports/DailyBriefCard";
 import { WeeklyScorecardCard } from "./reports/WeeklyScorecardCard";
 import { CustomerIntelCard } from "./reports/CustomerIntelCard";
+import { ParsedBriefCard, hasVisualData } from "./reports/ParsedBriefCard";
 import { MessageActions } from "./MessageActions";
 import { useStreamingText } from "@/hooks/useStreamingText";
 import dyneEmblem from "@/assets/dyne-emblem.png";
-// Visual response components - DISABLED until properly tested
-// import { parseResponse, hasVisualContent } from "@/lib/responseParser";
-// import { KPICardGrid, InlineBarChart, CollapsibleSection, InsightsList, MenuEngList, RecommendationsList } from "./VisualResponse";
 
 interface MessageBubbleProps {
   message: Message;
@@ -118,6 +116,12 @@ export function MessageBubble({
             {isComplete && message.reportType === "customer-intelligence" && message.reportData && (
               <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
                 <CustomerIntelCard data={message.reportData} />
+              </div>
+            )}
+            {/* Parsed Visual Card - for text responses without structured reportData */}
+            {isComplete && !message.reportType && hasVisualData(message.content) && (
+              <div className="mt-3">
+                <ParsedBriefCard content={message.content} />
               </div>
             )}
             {/* Feedback buttons */}
