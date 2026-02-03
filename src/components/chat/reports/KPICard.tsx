@@ -13,9 +13,9 @@ export function KPICard({ label, value, delta, prefix = "" }: KPICardProps) {
     : `${prefix}${value}`;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
-      <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-gray-900">{formatted}</p>
+    <div className="rounded-xl border border-border bg-card p-3 shadow-depth-1 transition-all duration-200 hover:shadow-depth-2 hover:border-border/80 hover:-translate-y-0.5">
+      <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
+      <p className="mt-1 text-lg font-semibold text-foreground">{formatted}</p>
       {delta !== undefined && (
         <div className="mt-1">
           <DeltaIndicator value={delta} />

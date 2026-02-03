@@ -1,5 +1,4 @@
 import { KPICard } from "./KPICard";
-import { DeltaIndicator } from "./DeltaIndicator";
 import { Clock, TrendingUp, TrendingDown } from "lucide-react";
 
 interface WeeklyScorecardCardProps {
@@ -47,32 +46,32 @@ export function WeeklyScorecardCard({ data }: WeeklyScorecardCardProps) {
       {(movers.gainers?.length > 0 || movers.losers?.length > 0) && (
         <div className="grid grid-cols-2 gap-2">
           {/* Gainers */}
-          <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-3">
+          <div className="rounded-xl bg-success-muted border border-success/20 p-3 shadow-depth-1">
             <div className="flex items-center gap-1 mb-2">
-              <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
-              <span className="text-xs font-semibold text-emerald-700 uppercase">Gainers</span>
+              <TrendingUp className="h-3.5 w-3.5 text-success" />
+              <span className="text-xs font-semibold text-success uppercase">Gainers</span>
             </div>
             <div className="space-y-1.5">
               {movers.gainers.slice(0, 4).map((g: any, i: number) => (
                 <div key={i} className="text-xs">
-                  <span className="text-gray-800 capitalize">{g.item}</span>
-                  <div className="text-emerald-600 font-medium">+{g.change} units</div>
+                  <span className="text-foreground capitalize">{g.item}</span>
+                  <div className="text-success font-medium">+{g.change} units</div>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Losers */}
-          <div className="rounded-lg bg-red-50 border border-red-100 p-3">
+          <div className="rounded-xl bg-destructive/5 border border-destructive/20 p-3 shadow-depth-1">
             <div className="flex items-center gap-1 mb-2">
-              <TrendingDown className="h-3.5 w-3.5 text-red-500" />
-              <span className="text-xs font-semibold text-red-600 uppercase">Needs Attention</span>
+              <TrendingDown className="h-3.5 w-3.5 text-destructive" />
+              <span className="text-xs font-semibold text-destructive uppercase">Needs Attention</span>
             </div>
             <div className="space-y-1.5">
               {movers.losers.slice(0, 4).map((l: any, i: number) => (
                 <div key={i} className="text-xs">
-                  <span className="text-gray-800 capitalize">{l.item}</span>
-                  <div className="text-red-500 font-medium">{l.change} units</div>
+                  <span className="text-foreground capitalize">{l.item}</span>
+                  <div className="text-destructive font-medium">{l.change} units</div>
                 </div>
               ))}
             </div>
@@ -84,8 +83,8 @@ export function WeeklyScorecardCard({ data }: WeeklyScorecardCardProps) {
       <div className="flex gap-2">
         {/* Day Pattern Bar Chart */}
         {dayPattern.length > 0 && (
-          <div className="flex-1 rounded-lg border border-gray-200 bg-white p-3">
-            <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">Daily Pattern</span>
+          <div className="flex-1 rounded-xl border border-border bg-card p-3 shadow-depth-1">
+            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Daily Pattern</span>
             <div className="mt-2 flex items-end gap-1 h-12">
               {dayPattern.map((d: any, i: number) => {
                 const height = Math.max((d.gmv / maxDayGmv) * 100, 8);
@@ -93,11 +92,11 @@ export function WeeklyScorecardCard({ data }: WeeklyScorecardCardProps) {
                 return (
                   <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
                     <div
-                      className="w-full rounded-t bg-teal-400 min-h-[3px]"
+                      className="w-full rounded-t bg-primary min-h-[3px] transition-all duration-200 hover:bg-primary/80"
                       style={{ height: `${height}%` }}
                       title={`${dayName}: ${d.orders} orders, EGP ${Math.round(d.gmv).toLocaleString()}`}
                     />
-                    <span className="text-[9px] text-gray-400">{dayName.charAt(0)}</span>
+                    <span className="text-[9px] text-muted-foreground">{dayName.charAt(0)}</span>
                   </div>
                 );
               })}
@@ -107,13 +106,13 @@ export function WeeklyScorecardCard({ data }: WeeklyScorecardCardProps) {
 
         {/* Peak Hour */}
         {peakHour && (
-          <div className="rounded-lg border border-gray-200 bg-white p-3 min-w-[100px]">
-            <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">Peak Hour</span>
+          <div className="rounded-xl border border-border bg-card p-3 min-w-[100px] shadow-depth-1">
+            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Peak Hour</span>
             <div className="mt-1 flex items-center gap-1.5">
-              <Clock className="h-4 w-4 text-teal-600" />
-              <span className="text-lg font-semibold text-gray-900">{peakHour.hour}:00</span>
+              <Clock className="h-4 w-4 text-primary" />
+              <span className="text-lg font-semibold text-foreground">{peakHour.hour}:00</span>
             </div>
-            <p className="text-[11px] text-gray-500 mt-0.5">{peakHour.orders} orders</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{peakHour.orders} orders</p>
           </div>
         )}
       </div>

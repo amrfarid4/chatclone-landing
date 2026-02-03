@@ -66,6 +66,21 @@ export default {
           "code-bg": "hsl(var(--chat-code-bg))",
           "code-foreground": "hsl(var(--chat-code-foreground))",
         },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+          muted: "hsl(var(--success-muted))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+          muted: "hsl(var(--warning-muted))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
+          muted: "hsl(var(--info-muted))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -101,6 +116,27 @@ export default {
           "0%, 80%, 100%": { opacity: "0.3", transform: "scale(0.8)" },
           "40%": { opacity: "1", transform: "scale(1)" },
         },
+        // Premium micro-interactions
+        "thinking-dot": {
+          "0%, 60%, 100%": { transform: "translateY(0)" },
+          "30%": { transform: "translateY(-6px)" },
+        },
+        "cursor-blink": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0" },
+        },
+        "shimmer": {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+        "scale-in": {
+          from: { opacity: "0", transform: "scale(0.95)" },
+          to: { opacity: "1", transform: "scale(1)" },
+        },
+        "slide-up": {
+          from: { opacity: "0", transform: "translateY(10px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -110,6 +146,12 @@ export default {
         "slide-in-left": "slide-in-left 0.3s ease-out",
         "pulse-soft": "pulse-soft 2s ease-in-out infinite",
         "loading-dot": "loading-dot 1.4s ease-in-out infinite",
+        // Premium animations
+        "thinking-dot": "thinking-dot 1.4s ease-in-out infinite",
+        "cursor-blink": "cursor-blink 1s ease-in-out infinite",
+        "shimmer": "shimmer 2s linear infinite",
+        "scale-in": "scale-in 0.2s ease-out forwards",
+        "slide-up": "slide-up 0.3s ease-out forwards",
       },
     },
   },

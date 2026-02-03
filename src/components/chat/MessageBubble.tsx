@@ -1,71 +1,133 @@
 import { Message, ActionCampaign } from "@/types/chat";
 import { cn } from "@/lib/utils";
 import { Check, Copy, ArrowRight, Zap, ThumbsUp, ThumbsDown } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { submitCampaignAction, submitFeedback } from "@/lib/api";
 import { DailyBriefCard } from "./reports/DailyBriefCard";
 import { WeeklyScorecardCard } from "./reports/WeeklyScorecardCard";
 import { CustomerIntelCard } from "./reports/CustomerIntelCard";
+import { MessageActions } from "./MessageActions";
+import { useStreamingText } from "@/hooks/useStreamingText";
+import dyneEmblem from "@/assets/dyne-emblem.png";
+import { parseResponse, hasVisualContent } from "@/lib/responseParser";
+import {
+  KPICardGrid,
+  InlineBarChart,
+  CollapsibleSection,
+  InsightsList,
+  MenuEngList,
+  RecommendationsList,
+} from "./VisualResponse";
 
 interface MessageBubbleProps {
   message: Message;
   isLatest?: boolean;
   onSuggestedQuestion?: (question: string) => void;
+  onRegenerate?: () => void;
+  onEdit?: () => void;
   showSuggestions?: boolean;
 }
 
-export function MessageBubble({ message, isLatest, onSuggestedQuestion, showSuggestions }: MessageBubbleProps) {
+export function MessageBubble({
+  message,
+  isLatest,
+  onSuggestedQuestion,
+  onRegenerate,
+  onEdit,
+  showSuggestions,
+}: MessageBubbleProps) {
+  const [isHovered, setIsHovered] = useState(false);
   const isUser = message.role === "user";
   const suggestions = message.suggestedQuestions;
   const campaigns = message.actionCampaigns;
   const hasSuggestions = showSuggestions && !isUser && suggestions && suggestions.length > 0;
   const hasCampaigns = showSuggestions && !isUser && campaigns && campaigns.length > 0;
 
+  // Streaming text effect for latest AI message
+  const shouldStream = !isUser && isLatest && !message.reportType;
+  const { displayedText, isComplete } = useStreamingText({
+    text: message.content,
+    enabled: shouldStream,
+    speed: 20,
+  });
+
+  const contentToRender = shouldStream ? displayedText : message.content;
+
   return (
     <div
       className={cn(
-        "flex animate-fade-in flex-col",
+        "flex animate-fade-in flex-col group",
         isUser ? "items-end" : "items-start"
       )}
+      role="article"
+      aria-label={`${isUser ? "You" : "Dyne"} said`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {isUser ? (
         // User message - right aligned, gray bubble, no avatar
         <div className="max-w-[70%]">
-          <div className="rounded-3xl bg-chat-user-bubble px-4 py-3 text-chat-user-foreground">
-            <MessageContent content={message.content} isUser={isUser} />
+          <div className="rounded-3xl bg-chat-user-bubble px-4 py-3 text-chat-user-foreground shadow-depth-1">
+            <MessageContent content={contentToRender} isUser={isUser} />
           </div>
+          {/* User message actions */}
+          <MessageActions
+            content={message.content}
+            messageId={message.id}
+            isUser={true}
+            onEdit={onEdit}
+            isVisible={isHovered}
+            className="mt-1 justify-end"
+          />
         </div>
       ) : (
         // AI message - left aligned, white bubble with border, dyne logo
         <div className="flex items-start gap-3 max-w-[85%]">
-          {/* Dyne logo - teal circle */}
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
-            D
-          </div>
+          {/* Dyne emblem */}
+          <img
+            src={dyneEmblem}
+            alt="dyne"
+            className="h-8 w-8 shrink-0 rounded-xl shadow-depth-1"
+          />
 
           <div className="flex flex-col">
-            <div className="rounded-3xl border border-chat-ai-border bg-chat-ai-bubble px-4 py-3 text-chat-ai-foreground">
-              <MessageContent content={message.content} isUser={isUser} />
+            <div className="rounded-3xl border border-chat-ai-border bg-chat-ai-bubble px-4 py-3 text-chat-ai-foreground shadow-depth-1">
+              <MessageContent content={contentToRender} isUser={isUser} />
+              {/* Streaming cursor */}
+              {shouldStream && !isComplete && (
+                <span className="inline-block w-0.5 h-4 bg-primary animate-cursor-blink ml-0.5 align-middle" />
+              )}
             </div>
+            {/* AI message actions */}
+            {isComplete && (
+              <MessageActions
+                content={message.content}
+                messageId={message.id}
+                isUser={false}
+                onRegenerate={onRegenerate}
+                isVisible={isHovered}
+                className="mt-1"
+              />
+            )}
             {/* Report Cards — staggered reveal */}
-            {message.reportType === "daily-brief" && message.reportData && (
+            {isComplete && message.reportType === "daily-brief" && message.reportData && (
               <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
                 <DailyBriefCard data={message.reportData} />
               </div>
             )}
-            {message.reportType === "weekly-scorecard" && message.reportData && (
+            {isComplete && message.reportType === "weekly-scorecard" && message.reportData && (
               <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
                 <WeeklyScorecardCard data={message.reportData} />
               </div>
             )}
-            {message.reportType === "customer-intelligence" && message.reportData && (
+            {isComplete && message.reportType === "customer-intelligence" && message.reportData && (
               <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: "200ms" }}>
                 <CustomerIntelCard data={message.reportData} />
               </div>
             )}
             {/* Feedback buttons */}
-            {message.brainInteractionId && (
+            {isComplete && message.brainInteractionId && (
               <FeedbackButtons interactionId={message.brainInteractionId} />
             )}
           </div>
@@ -131,7 +193,7 @@ function CampaignCard({ campaign }: { campaign: ActionCampaign }) {
         <Zap className="h-4 w-4 text-primary" />
         <span className="text-xs font-medium text-primary">{typeLabel}</span>
         {campaign.confidence === "high" && (
-          <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">High confidence</span>
+          <span className="text-[10px] bg-success-muted text-success px-1.5 py-0.5 rounded-full">High confidence</span>
         )}
       </div>
       <p className="text-xs text-foreground/80 leading-relaxed">{campaign.description}</p>
@@ -168,7 +230,7 @@ function CampaignCard({ campaign }: { campaign: ActionCampaign }) {
       ) : (
         <div className={cn(
           "text-xs font-medium pt-1",
-          status === "approved" ? "text-green-600" : "text-muted-foreground"
+          status === "approved" ? "text-success" : "text-muted-foreground"
         )}>
           {status === "approved" ? "Approved — queued for execution" : "Skipped"}
         </div>
@@ -226,6 +288,84 @@ function MessageContent({ content, isUser }: { content: string; isUser: boolean 
   // (questions are shown as buttons instead)
   const cleanContent = content.replace(/---\s*\n?\s*💡\s*\*?\*?Want me to dig deeper\?\*?\*?\s*\n?[\s\S]*$/, '').trim();
 
+  // Parse response for visual components (AI messages only)
+  const parsed = useMemo(() => {
+    if (isUser) return null;
+    return parseResponse(cleanContent);
+  }, [cleanContent, isUser]);
+
+  // Check if we have visual content to render
+  const showVisual = parsed && hasVisualContent(parsed);
+
+  // For AI messages with visual content, render structured components
+  if (!isUser && showVisual) {
+    return (
+      <div className="space-y-4">
+        {/* Headline - prominent */}
+        {parsed.headline && (
+          <h3 className="text-lg font-semibold text-foreground animate-slide-up-fade">
+            {parsed.headline}
+          </h3>
+        )}
+
+        {/* KPI Cards - metrics grid */}
+        {parsed.kpiCards && parsed.kpiCards.length > 0 && (
+          <KPICardGrid cards={parsed.kpiCards} className="mt-3" />
+        )}
+
+        {/* Bar Chart - for top items */}
+        {parsed.chartData && parsed.chartData.length > 0 && (
+          <div className="mt-3 opacity-0 animate-slide-up-fade" style={{ animationDelay: "200ms", animationFillMode: "forwards" }}>
+            <InlineBarChart data={parsed.chartData} title="Top Items" />
+          </div>
+        )}
+
+        {/* Insights - collapsible bullet points */}
+        {parsed.insights && parsed.insights.length > 0 && (
+          <div className="mt-3 opacity-0 animate-slide-up-fade" style={{ animationDelay: "300ms", animationFillMode: "forwards" }}>
+            <CollapsibleSection
+              title="What the data says"
+              badge={`${parsed.insights.length} insights`}
+              defaultOpen={true}
+            >
+              <InsightsList insights={parsed.insights} />
+            </CollapsibleSection>
+          </div>
+        )}
+
+        {/* Menu Engineering - category grid */}
+        {parsed.menuEngineering && parsed.menuEngineering.length > 0 && (
+          <div className="mt-3 opacity-0 animate-slide-up-fade" style={{ animationDelay: "400ms", animationFillMode: "forwards" }}>
+            <CollapsibleSection title="Menu Engineering" defaultOpen={true}>
+              <MenuEngList menuEng={parsed.menuEngineering} />
+            </CollapsibleSection>
+          </div>
+        )}
+
+        {/* Recommendations - action items */}
+        {parsed.recommendations && parsed.recommendations.length > 0 && (
+          <div className="mt-3 opacity-0 animate-slide-up-fade" style={{ animationDelay: "500ms", animationFillMode: "forwards" }}>
+            <CollapsibleSection
+              title="Recommendations"
+              badge={`${parsed.recommendations.length} actions`}
+              defaultOpen={true}
+            >
+              <RecommendationsList recommendations={parsed.recommendations} />
+            </CollapsibleSection>
+          </div>
+        )}
+
+        {/* Remaining unstructured text */}
+        {parsed.rawText && (
+          <div className="mt-3 opacity-0 animate-slide-up-fade" style={{ animationDelay: "600ms", animationFillMode: "forwards" }}>
+            <TextContent content={parsed.rawText} />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Default: render as markdown (user messages or AI without visual content)
   // Split content by code blocks
   const parts = cleanContent.split(/(```[\s\S]*?```)/g);
 
@@ -251,14 +391,14 @@ function MarkdownTable({ rows }: { rows: string[] }) {
   const body = rows.slice(2).map(parseRow);
 
   return (
-    <div className="my-3 overflow-x-auto rounded-lg border border-gray-200">
+    <div className="my-3 overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-xs">
         <thead>
-          <tr className="bg-gray-50 border-b border-gray-200">
+          <tr className="bg-muted border-b border-border">
             {header.map((cell, i) => (
               <th
                 key={i}
-                className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap"
+                className="px-3 py-2 text-left font-semibold text-foreground whitespace-nowrap"
               >
                 <FormattedText text={cell} />
               </th>
@@ -269,12 +409,12 @@ function MarkdownTable({ rows }: { rows: string[] }) {
           {body.map((row, ri) => (
             <tr
               key={ri}
-              className={ri % 2 === 0 ? "bg-white" : "bg-gray-50/50"}
+              className={ri % 2 === 0 ? "bg-background" : "bg-muted/50"}
             >
               {row.map((cell, ci) => (
                 <td
                   key={ci}
-                  className="px-3 py-1.5 text-gray-600 whitespace-nowrap"
+                  className="px-3 py-1.5 text-muted-foreground whitespace-nowrap"
                 >
                   <FormattedText text={cell} />
                 </td>

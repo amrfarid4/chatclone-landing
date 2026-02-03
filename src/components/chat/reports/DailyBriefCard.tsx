@@ -28,10 +28,10 @@ export function DailyBriefCard({ data }: DailyBriefCardProps) {
     <div className="mt-3 space-y-3">
       {/* Data freshness badge */}
       {dataDate && (
-        <div className="opacity-0 animate-fade-in-up flex items-center gap-1.5 text-[11px] text-gray-400" style={{ animationDelay: "0ms" }}>
+        <div className="opacity-0 animate-fade-in-up flex items-center gap-1.5 text-[11px] text-muted-foreground" style={{ animationDelay: "0ms" }}>
           <Clock className="h-3 w-3" />
           <span>Data through {formatDataDate(dataDate)}</span>
-          {isStale && <span className="text-amber-500 font-medium">&middot; Updating</span>}
+          {isStale && <span className="text-warning font-medium">&middot; Updating</span>}
         </div>
       )}
 
@@ -71,16 +71,16 @@ export function DailyBriefCard({ data }: DailyBriefCardProps) {
 
       {/* Week-to-date pace */}
       {data?.wtd_pace && (
-        <div className="opacity-0 animate-fade-in-up rounded-lg bg-blue-50 border border-blue-100 p-3" style={{ animationDelay: "550ms" }}>
+        <div className="opacity-0 animate-fade-in-up rounded-xl bg-info-muted border border-info/20 p-3 shadow-depth-1" style={{ animationDelay: "550ms" }}>
           <div className="flex items-center gap-1.5 mb-1">
-            <TrendingUp className="h-3.5 w-3.5 text-blue-600" />
-            <span className="text-xs font-semibold text-blue-700 uppercase">Week-to-Date</span>
+            <TrendingUp className="h-3.5 w-3.5 text-info" />
+            <span className="text-xs font-semibold text-info uppercase">Week-to-Date</span>
           </div>
-          <p className="text-sm text-blue-800">
+          <p className="text-sm text-foreground">
             <span className="font-semibold">EGP {Math.round(data.wtd_pace.current_gmv).toLocaleString()}</span>
             {" "}from {data.wtd_pace.current_orders} orders
             {data.wtd_pace.gmv_change_pct != null && (
-              <span className={data.wtd_pace.gmv_change_pct >= 0 ? "text-emerald-600" : "text-red-500"}>
+              <span className={data.wtd_pace.gmv_change_pct >= 0 ? "text-success" : "text-destructive"}>
                 {" "}({data.wtd_pace.gmv_change_pct >= 0 ? "+" : ""}{data.wtd_pace.gmv_change_pct}% vs last week)
               </span>
             )}
@@ -90,16 +90,16 @@ export function DailyBriefCard({ data }: DailyBriefCardProps) {
 
       {/* Anomalies */}
       {data?.anomalies?.length > 0 && (
-        <div className="opacity-0 animate-fade-in-up rounded-lg bg-amber-50 border border-amber-100 p-3" style={{ animationDelay: "700ms" }}>
+        <div className="opacity-0 animate-fade-in-up rounded-xl bg-warning-muted border border-warning/20 p-3 shadow-depth-1" style={{ animationDelay: "700ms" }}>
           <div className="flex items-center gap-1.5 mb-2">
-            <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-            <span className="text-xs font-semibold text-amber-700 uppercase">Item Alerts</span>
+            <AlertTriangle className="h-3.5 w-3.5 text-warning" />
+            <span className="text-xs font-semibold text-warning uppercase">Item Alerts</span>
           </div>
           <div className="space-y-1">
             {data.anomalies.slice(0, 4).map((a: any, i: number) => (
               <div key={i} className="flex items-center justify-between text-xs">
-                <span className="text-gray-700 capitalize truncate max-w-[60%]">{a.item}</span>
-                <span className={`font-medium ${a.direction === "up" ? "text-emerald-600" : "text-red-500"}`}>
+                <span className="text-foreground capitalize truncate max-w-[60%]">{a.item}</span>
+                <span className={`font-medium ${a.direction === "up" ? "text-success" : "text-destructive"}`}>
                   {a.direction === "up" ? "+" : ""}{Math.round(a.change_pct)}% ({a.yesterday_qty} units)
                 </span>
               </div>

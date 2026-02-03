@@ -40,6 +40,29 @@ All colors MUST be HSL.
 
     --radius: 1.5rem;
 
+    /* Semantic Status Colors */
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
+    --success-muted: 160 40% 96%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --warning-muted: 38 40% 96%;
+
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+    --info-muted: 217 40% 96%;
+
+    /* Typography Scale */
+    --font-size-xs: 0.6875rem;
+    --font-size-sm: 0.75rem;
+    --font-size-base: 0.875rem;
+    --font-size-md: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+    --font-size-3xl: 1.875rem;
+
     /* Chat-specific tokens - ChatGPT style */
     --chat-user-bubble: 0 0% 96%;
     --chat-user-foreground: 0 0% 13%;
@@ -79,6 +102,19 @@ All colors MUST be HSL.
     --input: 0 0% 20%;
     --ring: 173 75% 45%;
 
+    /* Semantic Status Colors - Dark */
+    --success: 160 70% 45%;
+    --success-foreground: 0 0% 100%;
+    --success-muted: 160 30% 15%;
+
+    --warning: 38 80% 55%;
+    --warning-foreground: 0 0% 100%;
+    --warning-muted: 38 30% 15%;
+
+    --info: 217 80% 65%;
+    --info-foreground: 0 0% 100%;
+    --info-muted: 217 30% 15%;
+
     /* Chat dark - ChatGPT style */
     --chat-user-bubble: 0 0% 20%;
     --chat-user-foreground: 0 0% 96%;
@@ -104,21 +140,153 @@ All colors MUST be HSL.
   .scrollbar-thin {
     scrollbar-width: thin;
   }
-  
+
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
   }
-  
+
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;
   }
-  
+
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background-color: hsl(var(--muted-foreground) / 0.3);
     border-radius: 3px;
   }
-  
+
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background-color: hsl(var(--muted-foreground) / 0.5);
+  }
+
+  /* Glassmorphism - Apple Liquid Glass inspired */
+  .glass {
+    background: hsl(var(--background) / 0.7);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border: 1px solid hsl(var(--border) / 0.5);
+  }
+
+  .glass-subtle {
+    background: hsl(var(--background) / 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .glass-strong {
+    background: hsl(var(--background) / 0.6);
+    backdrop-filter: blur(20px) saturate(200%);
+    -webkit-backdrop-filter: blur(20px) saturate(200%);
+    border: 1px solid hsl(var(--border) / 0.3);
+  }
+
+  /* Depth Shadows - Premium layered feel */
+  .shadow-depth-1 {
+    box-shadow:
+      0 1px 2px hsl(0 0% 0% / 0.04),
+      0 2px 4px hsl(0 0% 0% / 0.04);
+  }
+
+  .shadow-depth-2 {
+    box-shadow:
+      0 2px 4px hsl(0 0% 0% / 0.04),
+      0 4px 8px hsl(0 0% 0% / 0.06),
+      0 8px 16px hsl(0 0% 0% / 0.04);
+  }
+
+  .shadow-depth-3 {
+    box-shadow:
+      0 4px 8px hsl(0 0% 0% / 0.04),
+      0 8px 16px hsl(0 0% 0% / 0.06),
+      0 16px 32px hsl(0 0% 0% / 0.08);
+  }
+
+  /* Screen reader only */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}
+
+/* Visual Response Animations */
+@keyframes slide-up-fade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes count-up {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-slide-up-fade {
+  animation: slide-up-fade 0.4s ease-out forwards;
+}
+
+.animate-count-up {
+  animation: count-up 0.3s ease-out forwards;
+}
+
+.animate-bar-grow {
+  animation: bar-grow 0.6s ease-out forwards;
+  transform-origin: left;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 25%,
+    hsl(var(--muted-foreground) / 0.1) 50%,
+    hsl(var(--muted)) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Reduced Motion Support - Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

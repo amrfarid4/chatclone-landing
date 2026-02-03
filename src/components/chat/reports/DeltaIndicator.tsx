@@ -7,12 +7,12 @@ interface DeltaIndicatorProps {
 
 export function DeltaIndicator({ value, suffix = "%" }: DeltaIndicatorProps) {
   if (value === null || value === undefined) {
-    return <span className="text-xs text-gray-400">n/a</span>;
+    return <span className="text-xs text-muted-foreground/60">n/a</span>;
   }
 
   if (value > 0) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-xs font-medium text-emerald-600">
+      <span className="inline-flex items-center gap-0.5 text-xs font-medium text-success">
         <TrendingUp className="h-3 w-3" />
         +{value}{suffix}
       </span>
@@ -21,7 +21,7 @@ export function DeltaIndicator({ value, suffix = "%" }: DeltaIndicatorProps) {
 
   if (value < 0) {
     return (
-      <span className="inline-flex items-center gap-0.5 text-xs font-medium text-red-500">
+      <span className="inline-flex items-center gap-0.5 text-xs font-medium text-destructive">
         <TrendingDown className="h-3 w-3" />
         {value}{suffix}
       </span>
@@ -29,7 +29,7 @@ export function DeltaIndicator({ value, suffix = "%" }: DeltaIndicatorProps) {
   }
 
   return (
-    <span className="inline-flex items-center gap-0.5 text-xs text-gray-400">
+    <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground/60">
       <Minus className="h-3 w-3" />
       0{suffix}
     </span>

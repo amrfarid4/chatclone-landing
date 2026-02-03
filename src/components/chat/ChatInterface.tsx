@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from "react";
-import { Plus } from "lucide-react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { Plus, Command } from "lucide-react";
 import { Message } from "@/types/chat";
 import { suggestedPrompts } from "@/data/mockData";
 import { ChatMessages } from "./ChatMessages";
@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "sonner";
 import dyneLogo from "@/assets/dyne-logo.png";
 
 // Patterns that trigger report endpoints instead of /ask
@@ -43,6 +44,7 @@ export function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const [branches, setBranches] = useState<BranchInfo[]>([]);
   const [selectedBranch, setSelectedBranch] = useState("all");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Load branches
   useEffect(() => {
@@ -57,13 +59,42 @@ export function ChatInterface() {
       });
   }, []);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl + K: Focus input
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+
+      // Cmd/Ctrl + Shift + C: Copy last response
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "c") {
+        e.preventDefault();
+        const lastAssistantMessage = [...messages].reverse().find(m => m.role === "assistant");
+        if (lastAssistantMessage) {
+          navigator.clipboard.writeText(lastAssistantMessage.content);
+          toast.success("Copied to clipboard");
+        }
+      }
+
+      // Escape: New chat (when not typing)
+      if (e.key === "Escape" && document.activeElement !== inputRef.current) {
+        handleNewChat();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [messages]);
+
   const handleNewChat = useCallback(() => {
     setMessages([]);
     setIsLoading(false);
   }, []);
 
   const handleSendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, previousMessages?: Message[]) => {
       if (!content.trim()) return;
 
       const userMessage: Message = {
@@ -73,7 +104,8 @@ export function ChatInterface() {
         timestamp: new Date(),
       };
 
-      const updatedMessages = [...messages, userMessage];
+      const baseMessages = previousMessages ?? messages;
+      const updatedMessages = [...baseMessages, userMessage];
       setMessages(updatedMessages);
       setIsLoading(true);
 
@@ -122,7 +154,7 @@ export function ChatInterface() {
           setMessages([...updatedMessages, aiMessage]);
         } else {
           // Regular /ask call
-          const history = messages.map((msg) => ({
+          const history = baseMessages.map((msg) => ({
             role: msg.role,
             content: msg.content,
           }));
@@ -162,6 +194,40 @@ export function ChatInterface() {
     [messages, selectedBranch]
   );
 
+  // Regenerate response - re-sends the user's message that triggered this response
+  const handleRegenerate = useCallback(
+    async (messageId: string) => {
+      // Find the AI message index
+      const messageIndex = messages.findIndex(m => m.id === messageId);
+      if (messageIndex <= 0) return;
+
+      // Find the user message that triggered this response
+      const userMessage = messages[messageIndex - 1];
+      if (userMessage.role !== "user") return;
+
+      // Remove messages from this point forward
+      const previousMessages = messages.slice(0, messageIndex - 1);
+
+      // Re-send the user's message
+      await handleSendMessage(userMessage.content, previousMessages);
+    },
+    [messages, handleSendMessage]
+  );
+
+  // Edit message - for now, just show a toast (full implementation would need inline editing)
+  const handleEdit = useCallback(
+    (messageId: string) => {
+      const message = messages.find(m => m.id === messageId);
+      if (message && inputRef.current) {
+        // Put the message content in the input
+        inputRef.current.value = message.content;
+        inputRef.current.focus();
+        toast.info("Edit your message and press Enter to resend");
+      }
+    },
+    [messages]
+  );
+
   const handleSelectPrompt = useCallback(
     (prompt: string) => {
       handleSendMessage(prompt);
@@ -173,8 +239,8 @@ export function ChatInterface() {
 
   return (
     <div className="flex h-screen w-full flex-col bg-background">
-      {/* Header with Branch Selector and New Chat button */}
-      <div className="flex items-center justify-between border-b border-border bg-background px-4 py-3">
+      {/* Header with Branch Selector and New Chat button - Glass style */}
+      <header className="flex items-center justify-between glass-subtle border-b border-border/50 px-4 py-3 sticky top-0 z-10">
         <div className="flex items-center gap-4">
           <img src={dyneLogo} alt="dyne" className="h-6 w-auto" />
           {branches.length > 0 && (
@@ -192,28 +258,41 @@ export function ChatInterface() {
             </Select>
           )}
         </div>
-        {hasMessages && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleNewChat}
-            className="gap-1.5"
-          >
-            <Plus className="h-4 w-4" />
-            New Chat
-          </Button>
-        )}
-      </div>
+        <div className="flex items-center gap-2">
+          {/* Keyboard shortcut hint */}
+          <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground">
+            <Command className="h-3 w-3" />
+            <span>K to focus</span>
+          </div>
+          {hasMessages && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleNewChat}
+              className="gap-1.5"
+            >
+              <Plus className="h-4 w-4" />
+              New Chat
+            </Button>
+          )}
+        </div>
+      </header>
 
       {/* Chat Content */}
       {hasMessages ? (
-        <ChatMessages messages={messages} isLoading={isLoading} onSuggestedQuestion={handleSendMessage} />
+        <ChatMessages
+          messages={messages}
+          isLoading={isLoading}
+          onSuggestedQuestion={handleSendMessage}
+          onRegenerate={handleRegenerate}
+          onEdit={handleEdit}
+        />
       ) : (
         <WelcomeScreen onSelectPrompt={handleSelectPrompt} />
       )}
 
-      {/* Input Area - Fixed at bottom */}
-      <div className="border-t border-border bg-background p-4">
+      {/* Input Area - Fixed at bottom with glass effect */}
+      <footer className="border-t border-border/50 glass-subtle p-4">
         <div className="mx-auto max-w-3xl space-y-3">
           {hasMessages && (
             <SuggestionChips
@@ -222,9 +301,17 @@ export function ChatInterface() {
               disabled={isLoading}
             />
           )}
-          <ChatInput onSend={handleSendMessage} disabled={isLoading} />
+          <ChatInput
+            ref={inputRef}
+            onSend={(content) => handleSendMessage(content)}
+            disabled={isLoading}
+          />
+          {/* Keyboard shortcuts hint */}
+          <p id="input-hint" className="sr-only">
+            Press Enter to send, Shift+Enter for new line, Escape for new chat
+          </p>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }
