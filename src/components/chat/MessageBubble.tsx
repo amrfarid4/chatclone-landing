@@ -1,7 +1,7 @@
 import { Message, ActionCampaign } from "@/types/chat";
 import { cn } from "@/lib/utils";
 import { Check, Copy, ArrowRight, Zap, ThumbsUp, ThumbsDown } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { submitCampaignAction, submitFeedback } from "@/lib/api";
 import { DailyBriefCard } from "./reports/DailyBriefCard";
@@ -10,15 +10,9 @@ import { CustomerIntelCard } from "./reports/CustomerIntelCard";
 import { MessageActions } from "./MessageActions";
 import { useStreamingText } from "@/hooks/useStreamingText";
 import dyneEmblem from "@/assets/dyne-emblem.png";
-import { parseResponse, hasVisualContent } from "@/lib/responseParser";
-import {
-  KPICardGrid,
-  InlineBarChart,
-  CollapsibleSection,
-  InsightsList,
-  MenuEngList,
-  RecommendationsList,
-} from "./VisualResponse";
+// Visual response components - DISABLED until properly tested
+// import { parseResponse, hasVisualContent } from "@/lib/responseParser";
+// import { KPICardGrid, InlineBarChart, CollapsibleSection, InsightsList, MenuEngList, RecommendationsList } from "./VisualResponse";
 
 interface MessageBubbleProps {
   message: Message;
@@ -288,84 +282,14 @@ function MessageContent({ content, isUser }: { content: string; isUser: boolean 
   // (questions are shown as buttons instead)
   const cleanContent = content.replace(/---\s*\n?\s*💡\s*\*?\*?Want me to dig deeper\?\*?\*?\s*\n?[\s\S]*$/, '').trim();
 
-  // Parse response for visual components (AI messages only)
-  const parsed = useMemo(() => {
-    if (isUser) return null;
-    return parseResponse(cleanContent);
-  }, [cleanContent, isUser]);
+  // IMPORTANT: Visual parsing is DISABLED for now
+  // The existing report cards (DailyBriefCard, WeeklyScorecardCard, etc.)
+  // already handle structured data beautifully.
+  //
+  // TODO: Re-enable visual parsing only for FREE-FORM text responses
+  // that don't have a dedicated report card, after proper testing.
 
-  // Check if we have visual content to render
-  const showVisual = parsed && hasVisualContent(parsed);
-
-  // For AI messages with visual content, render structured components
-  if (!isUser && showVisual) {
-    return (
-      <div className="space-y-4">
-        {/* Headline - prominent */}
-        {parsed.headline && (
-          <h3 className="text-lg font-semibold text-foreground animate-slide-up-fade">
-            {parsed.headline}
-          </h3>
-        )}
-
-        {/* KPI Cards - metrics grid */}
-        {parsed.kpiCards && parsed.kpiCards.length > 0 && (
-          <KPICardGrid cards={parsed.kpiCards} className="mt-3" />
-        )}
-
-        {/* Bar Chart - for top items */}
-        {parsed.chartData && parsed.chartData.length > 0 && (
-          <div className="mt-3 opacity-0 animate-slide-up-fade" style={{ animationDelay: "200ms", animationFillMode: "forwards" }}>
-            <InlineBarChart data={parsed.chartData} title="Top Items" />
-          </div>
-        )}
-
-        {/* Insights - collapsible bullet points */}
-        {parsed.insights && parsed.insights.length > 0 && (
-          <div className="mt-3 opacity-0 animate-slide-up-fade" style={{ animationDelay: "300ms", animationFillMode: "forwards" }}>
-            <CollapsibleSection
-              title="What the data says"
-              badge={`${parsed.insights.length} insights`}
-              defaultOpen={true}
-            >
-              <InsightsList insights={parsed.insights} />
-            </CollapsibleSection>
-          </div>
-        )}
-
-        {/* Menu Engineering - category grid */}
-        {parsed.menuEngineering && parsed.menuEngineering.length > 0 && (
-          <div className="mt-3 opacity-0 animate-slide-up-fade" style={{ animationDelay: "400ms", animationFillMode: "forwards" }}>
-            <CollapsibleSection title="Menu Engineering" defaultOpen={true}>
-              <MenuEngList menuEng={parsed.menuEngineering} />
-            </CollapsibleSection>
-          </div>
-        )}
-
-        {/* Recommendations - action items */}
-        {parsed.recommendations && parsed.recommendations.length > 0 && (
-          <div className="mt-3 opacity-0 animate-slide-up-fade" style={{ animationDelay: "500ms", animationFillMode: "forwards" }}>
-            <CollapsibleSection
-              title="Recommendations"
-              badge={`${parsed.recommendations.length} actions`}
-              defaultOpen={true}
-            >
-              <RecommendationsList recommendations={parsed.recommendations} />
-            </CollapsibleSection>
-          </div>
-        )}
-
-        {/* Remaining unstructured text */}
-        {parsed.rawText && (
-          <div className="mt-3 opacity-0 animate-slide-up-fade" style={{ animationDelay: "600ms", animationFillMode: "forwards" }}>
-            <TextContent content={parsed.rawText} />
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Default: render as markdown (user messages or AI without visual content)
+  // Default: render as markdown
   // Split content by code blocks
   const parts = cleanContent.split(/(```[\s\S]*?```)/g);
 
